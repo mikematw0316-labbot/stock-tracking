@@ -275,10 +275,8 @@ window.onload = async function() {
 /* ── GAS Sheets 讀寫 ── */
 async function loadFromSheets(userId) {
   try {
-    const res = await fetch(GAS_API, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'load', user: userId }),
-    });
+    const url = GAS_API + '?action=load&user=' + encodeURIComponent(userId);
+    const res = await fetch(url);
     const json = await res.json();
     if (json.ok && json.data && json.data.holdings) return json.data.holdings;
   } catch(e) {}
@@ -286,8 +284,9 @@ async function loadFromSheets(userId) {
 }
 async function saveToSheets(userId, payload) {
   try {
-    await fetch(GAS_API, {
+    fetch(GAS_API, {
       method: 'POST',
+      mode: 'no-cors',
       body: JSON.stringify({ action: 'save', user: userId, payload }),
     });
   } catch(e) {}
