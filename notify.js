@@ -166,46 +166,42 @@ function computeUser(holdings, cache) {
 
 // ─── 產生 LINE 訊息 ───────────────────────────────────────────────────────────
 
-function buildMessage(result, updatedAt) {
-  const { thisMonth, totalDiv, totalProfit, totalValue, items } = result;
-  const ts = updatedAt
-    ? new Date(updatedAt).toLocaleString('zh-TW', { timeZone:'Asia/Taipei', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })
-    : '未知';
+function buildMessage(result) {
+  const { thisYear, thisMonth, totalDiv, totalProfit, totalValue, items } = result;
 
-  let msg = `📊 W&M ${thisMonth}月 股利彙報\n`;
-  msg += `資料更新：${ts}\n\n`;
+  let msg = `📊 W&M ${thisYear}-${thisMonth} 股利彙報\n\n`;
   msg += `💰 本月總股利：$${Math.round(totalDiv).toLocaleString()}\n`;
   msg += `📈 今日總損益：$${Math.round(totalProfit).toLocaleString()}\n`;
-  msg += `💎 持股總市值：$${Math.round(totalValue).toLocaleString()}\n`;
+  msg += `💎 目前持股值：$${Math.round(totalValue).toLocaleString()}\n\n`;
   msg += `────────────────\n\n`;
 
   for (const code of CONFIG.ALL_STOCKS) {
     const item = items[code];
     if (!item) continue;
+
     const unitStr = item.isUS ? `${item.lots}股` : `${item.lots}張`;
     const profStr = item.profit > 0
       ? `🔺${item.profit.toLocaleString()}`
-      : item.profit < 0 ? `▼${Math.abs(item.profit).toLocaleString()}` : '  0';
-    const icon = item.divAmt > 0 ? '◆ ' : '◇ ';
+      : item.profit < 0 ? `🔻${Math.abs(item.profit).toLocaleString()}` : '±0';
+    const icon = item.divAmt > 0 ? '◆' : '◇';
 
-    msg += `${icon}${code} (${unitStr}) ${profStr}\n`;
-    msg += `  現價 ${item.price} / 成本 ${item.cost}\n`;
+    msg += `${icon} ${code} (${unitStr}) ${profStr}\n`;
 
     if (item.divAmt > 0) {
+      // payDate 格式：2026/05/14 → 05/14
       const dateStr = item.payDate ? item.payDate.slice(5) : '??';
-      const estStr  = item.isEstimated ? '（預估）' : '';
-      msg += `  ◎ ${dateStr} 發放 $${item.divAmt.toLocaleString()}${estStr}\n`;
-      msg += `    (除息 ${item.exDate || '未定'} / 每單位 ${item.perUnit})\n`;
-    } else if (CONFIG.MONTHLY_ETFS.includes(code)) {
-      msg += `  ◎ 本月股利更新中\n`;
+      msg += `----${dateStr} 發放：$${item.divAmt.toLocaleString()}\n`;
     } else {
-      msg += `  ◎ 本月無股利派發\n`;
+      msg += `----本月無股利派發\n`;
     }
     msg += '\n';
   }
 
-  msg += `────────────────\n`;
-  return msg.trim();
+  msg += `────────────────\n\n`;
+  msg += `🔗 手動查詢/修改：\n\n`;
+  msg += `https://mikematw0316-labbot.github.io/stock-tracking/`;
+
+  return msg;
 }
 
 // ─── 主流程 ───────────────────────────────────────────────────────────────────
@@ -239,7 +235,7 @@ async function notifyAll(dryRun = false) {
     if (!userId.startsWith('U')) continue;
     try {
       const result  = computeUser(user.holdings || {}, cache);
-      const message = buildMessage(result, updatedAt);
+      const message = buildMessage(result);
       console.log(`\n[notify] ${user.name || userId}：\n${message}\n`);
 
       if (!dryRun) {
