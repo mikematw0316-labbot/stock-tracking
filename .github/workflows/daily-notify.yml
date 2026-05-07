@@ -1,9 +1,7 @@
 name: Daily LINE Notify
 
 on:
-  schedule:
-    - cron: '30 6 * * *'   # 14:30 台灣時間
-  workflow_dispatch:
+  workflow_dispatch:  # 僅手動觸發（本地 LaunchAgent 負責每日 14:00 發送）
     inputs:
       dry_run:
         description: '不發送 LINE 推播（僅預覽）'
