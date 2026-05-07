@@ -115,19 +115,11 @@ body::before{
     </p>
   </div>
 
-  <!-- LINE 登入 -->
-  <button onclick="loginWithLine()" class="btn btn-line" style="margin-bottom:18px;">
-    <i data-lucide="message-circle" style="width:17px;height:17px;fill:currentColor;"></i>
-    LINE 快速登入
-  </button>
-
-  <div class="divider" style="margin:4px 0 18px;">或</div>
-
   <!-- 帳號登入 -->
   <div class="card" style="padding:20px;margin-bottom:8px;">
     <div style="margin-bottom:14px;">
-      <label class="lbl" for="userInput">LINE 帳號 ID</label>
-      <input id="userInput" class="inp" type="text" placeholder="輸入您的 LINE User ID (U…)">
+      <label class="lbl" for="userInput">帳號</label>
+      <input id="userInput" class="inp" type="text" placeholder="輸入任意名稱或代號">
     </div>
     <button onclick="loginWithId()" class="btn btn-primary">
       進入系統 <i data-lucide="arrow-right" style="width:15px;height:15px;"></i>
@@ -135,7 +127,7 @@ body::before{
   </div>
 
   <p style="text-align:center;font-size:11px;color:var(--tx3);line-height:1.75;margin-top:16px;padding:0 4px;">
-    推薦綁定 LINE 帳號，系統將每日自動推播<br>最新的股利與損益分析報表。
+    輸入任意帳號即可使用，系統會自動記住您的持倉設定。<br>如需接收每日推播，請輸入您的 LINE User ID。
   </p>
 </main>
 
@@ -222,13 +214,10 @@ const BOARD_LOT   = 1000;
 const US_TAX      = 0.30;
 const STORAGE_KEY = 'stock-tracking-portfolio';
 
-// GAS Web App URL（LINE OAuth + 讀取持倉）
-const GAS_URL     = 'https://script.google.com/macros/s/AKfycbz6m-txGzLktwR3mV76dBc9pANhWf-ZIspibD0L1bWzSOmuLcgIGYRf7bul7Jeeae3h/exec';
-const LINE_CLIENT_ID = '2008788168';
-const CACHE_URL   = './data/cache.json';
+const CACHE_URL = './data/cache.json';
 
 let globalCache = null;
-let currentUser = null;   // LINE user ID
+let currentUser = null;
 let portfolio   = {};
 
 /* ── Init ── */
@@ -244,72 +233,26 @@ window.onload = async function() {
     if (res.ok) globalCache = await res.json();
   } catch(e) {}
 
-  // 檢查 URL 參數
-  const params = new URLSearchParams(location.search);
-  const urlUser = params.get('u') || '';
-
-  if (urlUser.startsWith('U')) {
-    // LINE OAuth 回呼帶 ?u= 參數（GAS 轉過來的）
-    currentUser = urlUser;
-    await loadUserPortfolio();
-  } else {
-    // 嘗試從 localStorage 恢復上次登入
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        currentUser = parsed._userId || null;
-        portfolio   = parsed._portfolio || {};
-      } catch(e) {}
-    }
+  // 嘗試從 localStorage 恢復上次登入
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      currentUser = parsed._userId || null;
+      portfolio   = parsed._portfolio || {};
+      if (currentUser) document.getElementById('userInput').value = currentUser;
+    } catch(e) {}
   }
 };
 
-/* ── LINE 登入 ── */
-function loginWithLine() {
-  // 登入完成後 GAS 重新導向到 GitHub Pages ?u=LINE_USER_ID
-  const redirectUri = encodeURIComponent(GAS_URL);
-  const state       = encodeURIComponent(location.href.split('?')[0]); // 回傳到此頁
-  window.location.href =
-    `https://access.line.me/oauth2/v2.1/authorize?response_type=code` +
-    `&client_id=${LINE_CLIENT_ID}` +
-    `&redirect_uri=${redirectUri}` +
-    `&state=${state}` +
-    `&scope=openid%20profile`;
-}
-
-/* ── ID 直接登入 ── */
-async function loginWithId() {
+/* ── 登入 ── */
+function loginWithId() {
   const val = document.getElementById('userInput').value.trim();
-  if (!val) { alert('請輸入 LINE User ID'); return; }
+  if (!val) { alert('請輸入帳號'); return; }
   currentUser = val;
-  await loadUserPortfolio();
-}
-
-/* ── 從 GAS 讀持倉 ── */
-async function loadUserPortfolio() {
-  showLoading('載入持倉中...');
-  try {
-    // GAS ?api=compute&user=... 回傳已計算的結果，其中含 items[code].qty & buyPrice
-    const res  = await fetch(`${GAS_URL}?api=compute&user=${encodeURIComponent(currentUser)}`);
-    if (res.ok) {
-      const data = await res.json();
-      // 從 GAS 結果反推持倉（qty = 已算好的股數/股份）
-      codes.forEach(c => {
-        const it = data.items?.[c];
-        if (!it) return;
-        const isUS = usStocks.includes(c);
-        const lots = isUS ? (it.qty || 0) : Math.round((it.qty || 0) / BOARD_LOT);
-        portfolio[c] = { lots, cost: it.buyPrice || 0 };
-      });
-      saveLocal();
-    }
-  } catch(e) {
-    console.warn('GAS 讀取失敗，使用本機資料', e);
-  }
-  hideLoading();
   showPortfolioForm();
 }
+
 
 /* ── 顯示持倉表單 ── */
 function showPortfolioForm() {
@@ -356,7 +299,6 @@ function submitAndCompute() {
     };
   });
   saveLocal();
-  saveToSheets();
   showLoading('計算中...');
   setTimeout(() => { renderResult(); hideLoading(); }, 50);
 }
@@ -365,20 +307,6 @@ function saveLocal() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ _userId: currentUser, _portfolio: portfolio })); } catch(e) {}
 }
 
-/* ── 儲存持倉到 Google Sheets ── */
-async function saveToSheets() {
-  if (!currentUser || !currentUser.startsWith('U')) return;
-  try {
-    await fetch(GAS_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'save', user: currentUser, payload: portfolio }),
-    });
-  } catch(e) {
-    console.warn('Sheets 儲存失敗:', e);
-  }
-}
 
 /* ── 計算核心 ── */
 function computeAll() {
