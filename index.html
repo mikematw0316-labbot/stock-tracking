@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <style>
 :root {
   --bg:#08080a; --surf1:#0f0f12; --surf2:#16161a; --surf3:#1c1c22;
@@ -115,11 +116,19 @@ body::before{
     </p>
   </div>
 
+  <!-- LINE 登入 -->
+  <button onclick="loginWithLine()" class="btn btn-line" style="margin-bottom:18px;">
+    <i data-lucide="message-circle" style="width:17px;height:17px;fill:currentColor;"></i>
+    LINE 快速綁定登入
+  </button>
+
+  <div class="divider" style="margin:4px 0 18px;">或使用</div>
+
   <!-- 帳號登入 -->
   <div class="card" style="padding:20px;margin-bottom:8px;">
     <div style="margin-bottom:14px;">
-      <label class="lbl" for="userInput">帳號</label>
-      <input id="userInput" class="inp" type="text" placeholder="輸入任意名稱或代號">
+      <label class="lbl" for="userInput">帳號名稱</label>
+      <input id="userInput" class="inp" type="text" placeholder="輸入您的自訂帳號">
     </div>
     <button onclick="loginWithId()" class="btn btn-primary">
       進入系統 <i data-lucide="arrow-right" style="width:15px;height:15px;"></i>
@@ -127,7 +136,7 @@ body::before{
   </div>
 
   <p style="text-align:center;font-size:11px;color:var(--tx3);line-height:1.75;margin-top:16px;padding:0 4px;">
-    輸入任意帳號即可使用，系統會自動記住您的持倉設定。<br>如需接收每日推播，請輸入您的 LINE User ID。
+    推薦綁定 LINE 帳號，系統將每日自動推播<br>最新的股利與損益分析報表。
   </p>
 </main>
 
@@ -214,7 +223,8 @@ const BOARD_LOT   = 1000;
 const US_TAX      = 0.30;
 const STORAGE_KEY = 'stock-tracking-portfolio';
 
-const CACHE_URL = './data/cache.json';
+const CACHE_URL  = './data/cache.json';
+const LIFF_ID    = '2008788168-sWY2AMfB';
 
 let globalCache = null;
 let currentUser = null;
@@ -233,6 +243,21 @@ window.onload = async function() {
     if (res.ok) globalCache = await res.json();
   } catch(e) {}
 
+  // LIFF 初始化（若在 LINE 內自動登入）
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if (liff.isLoggedIn()) {
+      const profile = await liff.getProfile();
+      currentUser = profile.userId;
+      document.getElementById('userInput').value = currentUser;
+      saveLocal();
+      showPortfolioForm();
+      return;
+    }
+  } catch(e) {
+    console.warn('LIFF init 失敗，使用一般模式', e);
+  }
+
   // 嘗試從 localStorage 恢復上次登入
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
@@ -245,11 +270,29 @@ window.onload = async function() {
   }
 };
 
-/* ── 登入 ── */
+/* ── LINE LIFF 登入 ── */
+function loginWithLine() {
+  try {
+    if (liff.isLoggedIn()) {
+      liff.getProfile().then(profile => {
+        currentUser = profile.userId;
+        saveLocal();
+        showPortfolioForm();
+      });
+    } else {
+      liff.login();
+    }
+  } catch(e) {
+    alert('LINE 登入失敗，請使用帳號登入');
+  }
+}
+
+/* ── 帳號登入 ── */
 function loginWithId() {
   const val = document.getElementById('userInput').value.trim();
   if (!val) { alert('請輸入帳號'); return; }
   currentUser = val;
+  saveLocal();
   showPortfolioForm();
 }
 
