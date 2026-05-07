@@ -558,7 +558,7 @@ async function writePriceCache(cache) {
       v.price ?? '',
       v.exDate ?? '',
       v.payDate ?? '',
-      v.perUnit ?? '',
+      v.perUnit != null ? "'" + v.perUnit : "'0",
       v.currency ?? '',
       v.fxRate ?? '',
       v.isEstimated ? 'TRUE' : 'FALSE',
@@ -568,7 +568,7 @@ async function writePriceCache(cache) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
       range: 'PriceCache!A1',
-      valueInputOption: 'RAW',
+      valueInputOption: 'USER_ENTERED',
       requestBody: { values: [...header, ...rows] },
     });
 
