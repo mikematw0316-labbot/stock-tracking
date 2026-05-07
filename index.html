@@ -45,7 +45,6 @@ body::before{
 @keyframes pageIn{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
 @media(min-width:640px){.page{max-width:520px;margin:0 auto;padding-left:0;padding-right:0;}}
 .card{background:var(--surf1);border:1px solid var(--border);border-radius:var(--radius-card);}
-.card-inner{background:var(--surf2);border:1px solid var(--border2);border-radius:10px;}
 .inp{
   display:block;width:100%;height:50px;
   background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-inp);
@@ -62,6 +61,7 @@ body::before{
 }
 .btn:active{filter:brightness(.88);transform:scale(.985);}
 .btn-primary{height:52px;background:var(--indigo);color:#fff;}
+.btn-line{height:52px;background:var(--line);color:#fff;}
 .btn-ghost{height:48px;background:transparent;border:1px solid var(--border);color:var(--tx2);font-size:14px;}
 .lbl{display:block;font-size:10px;font-weight:700;color:var(--tx3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:7px;}
 .divider{display:flex;align-items:center;gap:10px;font-size:11px;font-weight:700;color:var(--tx3);letter-spacing:.08em;text-transform:uppercase;}
@@ -99,7 +99,7 @@ body::before{
   <div id="loadingText" style="font-size:13px;font-weight:600;color:var(--tx2);">處理中...</div>
 </div>
 
-<!-- ══ 頁面：首頁 ══ -->
+<!-- ══ 頁面：登入 ══ -->
 <main id="pageLogin" class="page active" style="justify-content:center;">
   <div style="text-align:center;margin-bottom:36px;">
     <div style="display:inline-flex;align-items:center;justify-content:center;
@@ -115,18 +115,28 @@ body::before{
     </p>
   </div>
 
-  <div class="card" style="padding:20px;margin-bottom:14px;">
-    <p style="font-size:12px;color:var(--tx2);margin-bottom:16px;line-height:1.6;">
-      持倉資料存在您的瀏覽器 (localStorage)，不上傳伺服器。<br>
-      股價 / 股利每日 14:00 自動更新。
-    </p>
-    <button onclick="enterPortfolio()" class="btn btn-primary">
-      <i data-lucide="bar-chart-2" style="width:15px;height:15px;"></i>
-      設定持倉 / 查看分析
+  <!-- LINE 登入 -->
+  <button onclick="loginWithLine()" class="btn btn-line" style="margin-bottom:18px;">
+    <i data-lucide="message-circle" style="width:17px;height:17px;fill:currentColor;"></i>
+    LINE 快速登入
+  </button>
+
+  <div class="divider" style="margin:4px 0 18px;">或</div>
+
+  <!-- 帳號登入 -->
+  <div class="card" style="padding:20px;margin-bottom:8px;">
+    <div style="margin-bottom:14px;">
+      <label class="lbl" for="userInput">LINE 帳號 ID</label>
+      <input id="userInput" class="inp" type="text" placeholder="輸入您的 LINE User ID (U…)">
+    </div>
+    <button onclick="loginWithId()" class="btn btn-primary">
+      進入系統 <i data-lucide="arrow-right" style="width:15px;height:15px;"></i>
     </button>
   </div>
 
-  <p id="cacheTs" style="text-align:center;font-size:11px;color:var(--tx3);margin-top:8px;"></p>
+  <p style="text-align:center;font-size:11px;color:var(--tx3);line-height:1.75;margin-top:16px;padding:0 4px;">
+    推薦綁定 LINE 帳號，系統將每日自動推播<br>最新的股利與損益分析報表。
+  </p>
 </main>
 
 <!-- ══ 頁面：持倉設定 ══ -->
@@ -147,14 +157,14 @@ body::before{
     background:var(--indigo-d);border:1px solid var(--indigo-b);border-radius:11px;">
     <i data-lucide="info" style="width:14px;height:14px;color:var(--indigo);flex-shrink:0;margin-top:1px;"></i>
     <p style="font-size:12px;color:#a5b4fc;line-height:1.65;">
-      請輸入持有數量與平均成本，資料存在本機瀏覽器。若無持有，保留空白即可。
+      請輸入持有數量與平均成本。若無持有，保留空白即可。
     </p>
   </div>
 
   <div id="stockInputs" style="display:flex;flex-direction:column;gap:10px;padding-bottom:90px;"></div>
 
   <div class="bottom-bar">
-    <button onclick="computeAndShow()" class="btn btn-primary">
+    <button onclick="submitAndCompute()" class="btn btn-primary">
       <i data-lucide="zap" style="width:15px;height:15px;"></i> 開始智能分析
     </button>
   </div>
@@ -205,22 +215,21 @@ body::before{
 
 <script>
 /* ── Config ── */
-const codes         = ["0056","00878","00919","00953B","00937B","00933B","QQQI","CLOZ"];
-const usStocks      = ["QQQI","CLOZ"];
-const monthlyETFs   = ["00953B","00937B","00933B","QQQI","CLOZ"];
-const BOARD_LOT     = 1000;
-const US_TAX        = 0.30;
-const STORAGE_KEY   = 'stock-tracking-portfolio';
+const codes       = ["0056","00878","00919","00953B","00937B","00933B","QQQI","CLOZ"];
+const usStocks    = ["QQQI","CLOZ"];
+const monthlyETFs = ["00953B","00937B","00933B","QQQI","CLOZ"];
+const BOARD_LOT   = 1000;
+const US_TAX      = 0.30;
+const STORAGE_KEY = 'stock-tracking-portfolio';
 
-// GitHub Pages 上的本地快取（每日 Actions 更新）
-const CACHE_URL = './data/cache.json';
-
-// GAS Web App URL（用於 LINE 使用者讀寫 Google Sheets）
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbz6m-txGzLktwR3mV76dBc9pANhWf-ZIspibD0L1bWzSOmuLcgIGYRf7bul7Jeeae3h/exec';
+// GAS Web App URL（LINE OAuth + 讀取持倉）
+const GAS_URL     = 'https://script.google.com/macros/s/AKfycbz6m-txGzLktwR3mV76dBc9pANhWf-ZIspibD0L1bWzSOmuLcgIGYRf7bul7Jeeae3h/exec';
+const LINE_CLIENT_ID = '2008788168';
+const CACHE_URL   = './data/cache.json';
 
 let globalCache = null;
+let currentUser = null;   // LINE user ID
 let portfolio   = {};
-let lineUserId  = null;  // 若透過 LINE 登入則有值
 
 /* ── Init ── */
 window.onload = async function() {
@@ -232,67 +241,78 @@ window.onload = async function() {
   // 載入快取
   try {
     const res = await fetch(CACHE_URL + '?t=' + Date.now());
-    if (res.ok) {
-      globalCache = await res.json();
-      const ts = Object.values(globalCache).map(v => v.updatedAt).sort().pop();
-      if (ts) {
-        const d = new Date(ts);
-        document.getElementById('cacheTs').innerText =
-          '資料更新：' + d.toLocaleString('zh-TW', { timeZone:'Asia/Taipei', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
-      }
-    }
-  } catch(e) { console.warn('cache.json 載入失敗', e); }
-
-  // 讀取 localStorage 持倉
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) portfolio = JSON.parse(saved);
+    if (res.ok) globalCache = await res.json();
   } catch(e) {}
 
-  // 若 URL 有 ?u=LINE_USER_ID，視為 LINE 使用者，從 GAS 拉資料
-  const urlParams = new URLSearchParams(location.search);
-  const urlUser   = urlParams.get('u') || '';
+  // 檢查 URL 參數
+  const params = new URLSearchParams(location.search);
+  const urlUser = params.get('u') || '';
+
   if (urlUser.startsWith('U')) {
-    lineUserId = urlUser;
-    showLoading('載入 LINE 持倉...');
-    try {
-      const res = await fetch(`${GAS_URL}?api=load&user=${encodeURIComponent(lineUserId)}`);
-      if (res.ok) {
-        const data = await res.json();
-        // GAS 回傳格式：{ code: { lots, price }, ... }
-        codes.forEach(c => {
-          if (data[c]) portfolio[c] = { lots: data[c].lots ?? 0, cost: data[c].price ?? 0 };
-        });
-      }
-    } catch(e) { console.warn('GAS 載入失敗，使用 localStorage', e); }
-    hideLoading();
-    enterPortfolio();
+    // LINE OAuth 回呼帶 ?u= 參數（GAS 轉過來的）
+    currentUser = urlUser;
+    await loadUserPortfolio();
+  } else {
+    // 嘗試從 localStorage 恢復上次登入
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        currentUser = parsed._userId || null;
+        portfolio   = parsed._portfolio || {};
+      } catch(e) {}
+    }
   }
 };
 
-/* ── Page routing ── */
-function showPage(id) {
-  document.querySelectorAll('.page').forEach(p => {
-    p.classList.remove('active');
-    p.style.display = 'none';
-  });
-  const el = document.getElementById(id);
-  el.style.display = 'flex';
-  void el.offsetWidth;
-  el.classList.add('active');
-  window.scrollTo({ top:0 });
+/* ── LINE 登入 ── */
+function loginWithLine() {
+  // 登入完成後 GAS 重新導向到 GitHub Pages ?u=LINE_USER_ID
+  const redirectUri = encodeURIComponent(GAS_URL);
+  const state       = encodeURIComponent(location.href.split('?')[0]); // 回傳到此頁
+  window.location.href =
+    `https://access.line.me/oauth2/v2.1/authorize?response_type=code` +
+    `&client_id=${LINE_CLIENT_ID}` +
+    `&redirect_uri=${redirectUri}` +
+    `&state=${state}` +
+    `&scope=openid%20profile`;
 }
 
-function showLoading(text) {
-  document.getElementById('loadingText').innerText = text || '處理中...';
-  document.getElementById('loading').style.display = 'flex';
-}
-function hideLoading() {
-  document.getElementById('loading').style.display = 'none';
+/* ── ID 直接登入 ── */
+async function loginWithId() {
+  const val = document.getElementById('userInput').value.trim();
+  if (!val) { alert('請輸入 LINE User ID'); return; }
+  currentUser = val;
+  await loadUserPortfolio();
 }
 
-/* ── 進入持倉設定頁 ── */
-function enterPortfolio() {
+/* ── 從 GAS 讀持倉 ── */
+async function loadUserPortfolio() {
+  showLoading('載入持倉中...');
+  try {
+    // GAS ?api=compute&user=... 回傳已計算的結果，其中含 items[code].qty & buyPrice
+    const res  = await fetch(`${GAS_URL}?api=compute&user=${encodeURIComponent(currentUser)}`);
+    if (res.ok) {
+      const data = await res.json();
+      // 從 GAS 結果反推持倉（qty = 已算好的股數/股份）
+      codes.forEach(c => {
+        const it = data.items?.[c];
+        if (!it) return;
+        const isUS = usStocks.includes(c);
+        const lots = isUS ? (it.qty || 0) : Math.round((it.qty || 0) / BOARD_LOT);
+        portfolio[c] = { lots, cost: it.buyPrice || 0 };
+      });
+      saveLocal();
+    }
+  } catch(e) {
+    console.warn('GAS 讀取失敗，使用本機資料', e);
+  }
+  hideLoading();
+  showPortfolioForm();
+}
+
+/* ── 顯示持倉表單 ── */
+function showPortfolioForm() {
   showPage('pageHome');
   const box = document.getElementById('stockInputs');
   box.innerHTML = '';
@@ -305,15 +325,13 @@ function enterPortfolio() {
     wrap.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
         <span style="font-size:19px;font-weight:800;color:var(--tx);letter-spacing:-.3px;">${code}</span>
-        <span class="badge" style="
-          background:${isUS ? 'rgba(99,102,241,0.14)' : 'rgba(255,255,255,0.05)'};
-          color:${isUS ? '#818cf8' : 'var(--tx3)'};">
-          ${isUS ? '🇺🇸 美股' : '🇹🇼 台股'}
+        <span class="badge" style="background:${isUS?'rgba(99,102,241,0.14)':'rgba(255,255,255,0.05)'};color:${isUS?'#818cf8':'var(--tx3)'};">
+          ${isUS?'🇺🇸 美股':'🇹🇼 台股'}
         </span>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
         <div>
-          <label class="lbl">持有${isUS ? '股數' : '張數'}</label>
+          <label class="lbl">持有${isUS?'股數':'張數'}</label>
           <input id="lots_${code}" class="inp" type="number" placeholder="0"
             value="${h.lots ?? ''}" style="height:48px;font-size:15px;">
         </div>
@@ -328,185 +346,117 @@ function enterPortfolio() {
   lucide.createIcons();
 }
 
-/* ── 計算並顯示 ── */
-function computeAndShow() {
-  if (!globalCache) {
-    alert('股價資料尚未載入，請稍後再試或重新整理頁面。');
-    return;
-  }
-
-  // 讀取持倉
+/* ── 送出計算 ── */
+function submitAndCompute() {
+  if (!globalCache) { alert('股價資料尚未載入，請稍後再試。'); return; }
   codes.forEach(c => {
     portfolio[c] = {
       lots: Number(document.getElementById('lots_'+c).value) || 0,
       cost: Number(document.getElementById('cost_'+c).value) || 0,
     };
   });
-  // 存 localStorage
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(portfolio)); } catch(e){}
-
-  // 若為 LINE 使用者，同步寫回 GAS（Google Sheets）
-  if (lineUserId) {
-    const gasPayload = {};
-    codes.forEach(c => { gasPayload[c] = { lots: portfolio[c].lots, price: portfolio[c].cost }; });
-    fetch(GAS_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'save', user: lineUserId, payload: gasPayload }),
-    }).catch(e => console.warn('GAS 儲存失敗', e));
-  }
-
+  saveLocal();
   showLoading('計算中...');
-  setTimeout(() => {
-    try { renderResult(); } catch(e) { alert('計算失敗：' + e.message); }
-    hideLoading();
-  }, 50);
+  setTimeout(() => { renderResult(); hideLoading(); }, 50);
 }
 
-/* ── 計算核心（與 notify.js 邏輯一致）── */
-function computeAll() {
-  const today     = new Date();
-  const thisYear  = today.getFullYear();
-  const thisMonth = today.getMonth() + 1;
+function saveLocal() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ _userId: currentUser, _portfolio: portfolio })); } catch(e) {}
+}
 
+/* ── 計算核心 ── */
+function computeAll() {
+  const today = new Date();
+  const thisYear = today.getFullYear(), thisMonth = today.getMonth() + 1;
   let totalDiv=0, totalProfit=0, totalValue=0;
   const items = {};
 
   codes.forEach(code => {
-    const h       = portfolio[code] || {};
-    const lots    = Number(h.lots  || 0);
-    const cost    = Number(h.cost  || 0);
-    if (lots === 0) return;
-
-    const isUS    = usStocks.includes(code);
-    const units   = isUS ? lots : lots * BOARD_LOT;
-    const info    = globalCache[code] || {};
-    const price   = Number(info.price  || 0);
-    const perUnit = Number(info.perUnit|| 0);
+    const h = portfolio[code] || {};
+    const lots = Number(h.lots || 0), cost = Number(h.cost || 0);
+    if (!lots) return;
+    const isUS  = usStocks.includes(code);
+    const units = isUS ? lots : lots * BOARD_LOT;
+    const info  = globalCache[code] || {};
+    const price = Number(info.price || 0);
+    const perUnit = Number(info.perUnit || 0);
     const fxRate  = isUS ? Number(info.fxRate || 32) : 1;
 
-    const val    = isUS ? price * units * fxRate : price * units;
-    totalValue  += val;
-
-    const profit = (price > 0 && cost > 0)
-      ? Math.round((price - cost) * units * (isUS ? fxRate : 1))
-      : 0;
+    const val = isUS ? price*units*fxRate : price*units;
+    totalValue += val;
+    const profit = (price>0 && cost>0) ? Math.round((price-cost)*units*(isUS?fxRate:1)) : 0;
     totalProfit += profit;
 
-    const payDate    = info.payDate || '';
-    const isThisMon  = isInYM(payDate, thisYear, thisMonth);
-    let   divAmt     = 0;
-    if (isThisMon && perUnit > 0 && units > 0) {
-      divAmt = isUS
-        ? Math.round(perUnit * units * fxRate * (1 - US_TAX))
-        : Math.round(perUnit * units);
+    const payDate = info.payDate || '';
+    const isThisMon = !!payDate && (() => {
+      const m = payDate.match(/(\d{4})[\/\-](\d{2})/);
+      return m && +m[1]===thisYear && +m[2]===thisMonth;
+    })();
+    let divAmt = 0;
+    if (isThisMon && perUnit>0 && units>0) {
+      divAmt = isUS ? Math.round(perUnit*units*fxRate*(1-US_TAX)) : Math.round(perUnit*units);
       totalDiv += divAmt;
     }
-
-    items[code] = {
-      lots, units, cost, price, profit, divAmt, perUnit, fxRate,
-      exDate: info.exDate, payDate,
-      isEstimated: !!info.isEstimated,
-      isThisMon, isUS,
-    };
+    items[code] = { lots, units, cost, price, profit, divAmt, perUnit, fxRate,
+      exDate:info.exDate, payDate, isEstimated:!!info.isEstimated, isThisMon, isUS };
   });
-
   return { thisMonth, totalDiv, totalProfit, totalValue, items };
 }
 
-function isInYM(s, y, m) {
-  if (!s) return false;
-  const match = String(s).match(/(\d{4})[\/\-](\d{2})/);
-  return match && Number(match[1]) === y && Number(match[2]) === m;
-}
+function isInYM(s,y,m){ if(!s)return false; const x=String(s).match(/(\d{4})[\/\-](\d{2})/); return x&&+x[1]===y&&+x[2]===m; }
 
-/* ── Render result page ── */
+/* ── Render ── */
 function renderResult() {
   const r = computeAll();
   showPage('pageResult');
-
-  const ts = Object.values(globalCache).map(v => v.updatedAt).sort().pop();
-  const tsStr = ts
-    ? new Date(ts).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})
-    : '未知';
+  const ts = Object.values(globalCache||{}).map(v=>v.updatedAt).filter(Boolean).sort().pop();
+  const tsStr = ts ? new Date(ts).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '未知';
   document.querySelector('#updateTime span').innerText = '資料更新：' + tsStr;
   document.getElementById('resultTitle').innerText = r.thisMonth + '月股利分析';
 
-  const fmt = n => '$' + Math.round(n || 0).toLocaleString();
-
-  // Summary
+  const fmt = n => '$' + Math.round(n||0).toLocaleString();
   let twDiv=0, usDiv=0;
-  codes.forEach(c => {
-    const it = r.items[c];
-    if (!it) return;
-    if (usStocks.includes(c)) usDiv += it.divAmt;
-    else                      twDiv += it.divAmt;
-  });
-  document.getElementById('totalDividendSum').innerText = fmt(twDiv + usDiv);
+  codes.forEach(c => { const it=r.items[c]; if(!it)return; usStocks.includes(c)?usDiv+=it.divAmt:twDiv+=it.divAmt; });
+  document.getElementById('totalDividendSum').innerText = fmt(twDiv+usDiv);
   const dp = document.getElementById('totalDividendParts');
-  if (usDiv > 0) { dp.style.display='block'; dp.innerText=`${fmt(twDiv)} + ${fmt(usDiv)} (美)`; }
-  else           { dp.style.display='none'; }
+  if (usDiv>0) { dp.style.display='block'; dp.innerText=`${fmt(twDiv)} + ${fmt(usDiv)} (美)`; } else { dp.style.display='none'; }
 
   const profEl = document.getElementById('totalProfitSum');
-  profEl.innerText = (r.totalProfit >= 0 ? '+' : '') + fmt(r.totalProfit);
-  profEl.style.color = r.totalProfit >= 0 ? 'var(--green)' : 'var(--red)';
+  profEl.innerText = (r.totalProfit>=0?'+':'')+fmt(r.totalProfit);
+  profEl.style.color = r.totalProfit>=0?'var(--green)':'var(--red)';
   document.getElementById('totalValueSum').innerText = fmt(r.totalValue);
 
-  // Cards
   const list = document.getElementById('resultList');
   list.innerHTML = '';
-  const curM = r.thisMonth;
-
   codes.forEach(code => {
-    const item = r.items[code];
-    if (!item) return;
+    const item = r.items[code]; if(!item) return;
     const { lots, cost, price, profit, divAmt, perUnit, exDate, payDate, isEstimated, isUS } = item;
-
-    const profColor = profit >= 0 ? 'var(--green)' : 'var(--red)';
-    const priceLine = price > 0
-      ? `<span style="color:var(--tx);font-weight:600;">${price}</span>
-         <span style="color:var(--border);margin:0 3px;">/</span>
-         <span style="color:var(--tx3);">${cost || '-'}</span>`
+    const profColor = profit>=0?'var(--green)':'var(--red)';
+    const priceLine = price>0
+      ? `<span style="color:var(--tx);font-weight:600;">${price}</span><span style="color:var(--border);margin:0 3px;">/</span><span style="color:var(--tx3);">${cost||'-'}</span>`
       : `<span style="color:var(--tx3);">更新中</span>`;
 
     let divBlock = '';
-    if (divAmt > 0) {
-      const dateShort = payDate ? payDate.slice(5).replace('/','/') : '??';
-      const estStr    = isEstimated ? `<span class="pill" style="background:var(--gold-d);color:var(--gold);margin-left:8px;">預估展延</span>` : '';
-      divBlock = `
-        <div class="div-sep">
-          <div style="display:flex;justify-content:space-between;align-items:flex-end;${exDate?'margin-bottom:10px;':''}">
-            <div>
-              <div class="lbl">本月股利</div>
-              <div class="mono c-gold" style="font-size:22px;letter-spacing:-.5px;">${(isUS?'NT$':'$')+divAmt.toLocaleString()}</div>
-              <div style="font-size:10px;color:var(--tx3);margin-top:2px;">每單位 ${perUnit}</div>
-            </div>
-            ${payDate?`<div style="text-align:right;">
-              <div class="lbl">發放日</div>
-              <div style="font-size:12px;font-weight:600;color:var(--tx);font-family:'DM Mono',monospace;">${dateShort}</div>
-            </div>`:''}
+    if (divAmt>0) {
+      const dateShort = payDate?payDate.slice(5):'??';
+      const estStr = isEstimated?`<span class="pill" style="background:var(--gold-d);color:var(--gold);margin-left:8px;">預估展延</span>`:'';
+      divBlock=`<div class="div-sep">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;${exDate?'margin-bottom:10px;':''}">
+          <div>
+            <div class="lbl">本月股利</div>
+            <div class="mono c-gold" style="font-size:22px;letter-spacing:-.5px;">${(isUS?'NT$':'$')+divAmt.toLocaleString()}</div>
+            <div style="font-size:10px;color:var(--tx3);margin-top:2px;">每單位 ${perUnit}</div>
           </div>
-          ${exDate?`<div style="display:flex;justify-content:space-between;align-items:center;
-            padding:9px 11px;background:var(--surf2);border-radius:8px;border:1px solid var(--border2);">
-            <span style="font-size:11px;color:var(--tx2);">
-              除權息日 <span style="font-family:'DM Mono',monospace;color:var(--tx);margin-left:5px;">${exDate}</span>
-            </span>
-            ${estStr}
-          </div>`:''}
-        </div>`;
+          ${payDate?`<div style="text-align:right;"><div class="lbl">發放日</div><div style="font-size:12px;font-weight:600;color:var(--tx);font-family:'DM Mono',monospace;">${dateShort}</div></div>`:''}
+        </div>
+        ${exDate?`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 11px;background:var(--surf2);border-radius:8px;border:1px solid var(--border2);">
+          <span style="font-size:11px;color:var(--tx2);">除權息日 <span style="font-family:'DM Mono',monospace;color:var(--tx);margin-left:5px;">${exDate}</span></span>${estStr}
+        </div>`:''}
+      </div>`;
     } else if (monthlyETFs.includes(code)) {
-      divBlock = `
-        <div class="div-sep" style="text-align:center;">
-          <div style="padding:11px;background:var(--gold-d);border-radius:9px;border:1px solid var(--gold-b);">
-            <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:3px;">金額待官方公布</div>
-            <div style="font-size:10px;color:var(--tx3);">${curM}月(預計)發放 / ${curM}月除權息</div>
-          </div>
-        </div>`;
+      divBlock=`<div class="div-sep" style="text-align:center;"><div style="padding:11px;background:var(--gold-d);border-radius:9px;border:1px solid var(--gold-b);"><div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:3px;">金額待官方公布</div><div style="font-size:10px;color:var(--tx3);">${r.thisMonth}月(預計)發放 / ${r.thisMonth}月除權息</div></div></div>`;
     } else {
-      divBlock = `
-        <div class="div-sep" style="text-align:center;">
-          <span class="pill" style="background:var(--surf2);color:var(--tx3);border:1px solid var(--border2);font-size:11px;">本月無股利派發</span>
-        </div>`;
+      divBlock=`<div class="div-sep" style="text-align:center;"><span class="pill" style="background:var(--surf2);color:var(--tx3);border:1px solid var(--border2);font-size:11px;">本月無股利派發</span></div>`;
     }
 
     const card = document.createElement('div');
@@ -515,24 +465,26 @@ function renderResult() {
       <div class="stock-head">
         <div style="flex:1;min-width:0;">
           <div style="font-size:20px;font-weight:800;letter-spacing:-.3px;color:var(--tx);line-height:1;">${code}</div>
-          <div style="font-size:12px;font-weight:700;margin-top:5px;color:${profColor};">
-            損益 ${profit>=0?'+':''}${profit.toLocaleString()}
-          </div>
+          <div style="font-size:12px;font-weight:700;margin-top:5px;color:${profColor};">損益 ${profit>=0?'+':''}${profit.toLocaleString()}</div>
         </div>
         <div style="text-align:right;flex-shrink:0;margin-left:12px;">
           <div class="lbl" style="text-align:right;">現價 / 成本</div>
           <div style="font-size:13px;font-family:'DM Mono',monospace;">${priceLine}</div>
-          <div style="font-size:10px;color:var(--tx3);margin-top:5px;">
-            持有 <span style="color:var(--tx2);font-weight:600;">${lots}</span> ${isUS?'股':'張'}
-          </div>
+          <div style="font-size:10px;color:var(--tx3);margin-top:5px;">持有 <span style="color:var(--tx2);font-weight:600;">${lots}</span> ${isUS?'股':'張'}</div>
         </div>
-      </div>
-      ${divBlock}`;
+      </div>${divBlock}`;
     list.appendChild(card);
   });
-
   lucide.createIcons();
 }
+
+/* ── Helpers ── */
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active');p.style.display='none';});
+  const el=document.getElementById(id); el.style.display='flex'; void el.offsetWidth; el.classList.add('active'); window.scrollTo({top:0});
+}
+function showLoading(t){document.getElementById('loadingText').innerText=t||'處理中...';document.getElementById('loading').style.display='flex';}
+function hideLoading(){document.getElementById('loading').style.display='none';}
 </script>
 </body>
 </html>
