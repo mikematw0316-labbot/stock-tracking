@@ -19,9 +19,11 @@ const path = require('path');
 const CONFIG = require('./config');
 
 const CACHE_FILE = path.join(__dirname, 'data', 'cache.json');
-const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+const UA = 'Mozilla/5.0';
 
-// ─── HTTP helper ──────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 async function fetchJSON(url, timeoutMs = 12000) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -42,18 +44,19 @@ async function fetchJSON(url, timeoutMs = 12000) {
 // ─── 股價查詢 ─────────────────────────────────────────────────────────────────
 
 /**
- * 取台股現價（上市 .TW，上櫃 .TWO）
- * 回傳 number | null
+ * 取台股現價 — 使用 TWSE / TPEX 即時行情 API（不限頻，官方來源）
+ * 上市用 tse_XXXX.tw，上櫃用 otc_XXXX.tw
  */
 async function getTWPrice(code) {
-  const suffix = CONFIG.OTC_STOCKS.includes(code) ? '.TWO' : '.TW';
-  const symbol = encodeURIComponent(code + suffix);
-  const data = await fetchJSON(
-    `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1d&interval=1d`
-  );
-  const meta = data?.chart?.result?.[0]?.meta;
-  if (!meta) return null;
-  const price = Number(meta.regularMarketPrice || meta.previousClose || 0);
+  const isOTC  = CONFIG.OTC_STOCKS.includes(code);
+  const exCode = isOTC ? `otc_${code}.tw` : `tse_${code}.tw`;
+  const url    = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${encodeURIComponent(exCode)}&json=1&delay=0`;
+  const data   = await fetchJSON(url);
+  const msgArray = data?.msgArray;
+  if (!Array.isArray(msgArray) || !msgArray.length) return null;
+  const item  = msgArray[0];
+  // z = 成交價，y = 昨收
+  const price = Number(item.z) || Number(item.y) || 0;
   return price > 0 ? price : null;
 }
 
@@ -68,7 +71,7 @@ async function getTWDividend(code) {
   const suffix = CONFIG.OTC_STOCKS.includes(code) ? '.TWO' : '.TW';
   const symbol = encodeURIComponent(code + suffix);
   const data = await fetchJSON(
-    `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1y&interval=1d&events=div`
+    `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?range=1y&interval=1d&events=div`
   );
   const events = data?.chart?.result?.[0]?.events?.dividends;
   if (!events) return null;
@@ -101,39 +104,84 @@ async function getTWDividend(code) {
 }
 
 /**
- * TWSE JSON 備援（上市股票，ETFortune dividendList 有 JSON 格式）
- * 只用來補充 payDate 比較準確的情況
+ * TWSE ETFortune HTML 備援（上市股票）
+ * 爬 https://www.twse.com.tw/zh/ETFortune/dividendList 的 HTML 表格
+ * 格式: 股票代號 | 名稱 | 除息日 | 除權日 | 發放日 | 金額 | ...（民國年 "115年05月06日"）
  */
 async function getTWDividendFromTWSE(code) {
-  // TWSE 提供 JSON 格式（Accept: application/json）
-  const data = await fetchJSON(
-    `https://www.twse.com.tw/zh/ETFortune/dividendList?response=json`
-  );
-  const rows = data?.data;
-  if (!Array.isArray(rows)) return null;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
+  let html = '';
+  try {
+    const res = await fetch('https://www.twse.com.tw/zh/ETFortune/dividendList', {
+      method: 'POST',
+      headers: {
+        'User-Agent': UA,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Referer': 'https://www.twse.com.tw/zh/ETFortune/dividendList',
+      },
+      body: `etfType=&symbols=&start=${new Date().getFullYear()}&end=${new Date().getFullYear()}`,
+      signal: ctrl.signal,
+    });
+    if (!res.ok) return null;
+    html = await res.text();
+  } catch { return null; }
+  finally { clearTimeout(timer); }
 
+  // 取出所有 <tr> 並找到含目標代號的那列
+  const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
   const today = new Date();
   const thisYear  = today.getFullYear();
   const thisMonth = today.getMonth() + 1;
 
-  // 格式: [股票代號, 股票名稱, 除息日, 股利, 發放日, ...]
-  const matched = rows.filter(r => String(r[0]).trim() === code);
-  if (!matched.length) return null;
+  const candidates = [];
+  let m;
+  while ((m = rowRe.exec(html)) !== null) {
+    const row = m[1];
+    // 每格 <td> 取純文字
+    const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)]
+      .map(c => c[1].replace(/<[^>]+>/g, '').trim());
+    if (cells.length < 5) continue;
+    if (cells[0] !== code) continue;
 
-  // 優先找當月的
-  const pick = matched.find(r => {
-    const payD = parseTWSEDate(r[4]);
-    return payD &&
-      payD.getFullYear() === thisYear &&
-      payD.getMonth() + 1 === thisMonth;
-  }) ?? matched[matched.length - 1];
+    // cells[2]=除息日, cells[4]=發放日, cells[5]=金額
+    const exD  = parseROCDate(cells[2]);
+    const payD = parseROCDate(cells[4]);
+    const amt  = parseFloat(cells[5]) || 0;
+    if (!exD || amt === 0) continue;
+    candidates.push({ exD, payD, amt });
+  }
+  if (!candidates.length) return null;
 
-  const exDate  = pick[2] ? fmtDate(parseTWSEDate(pick[2])) : null;
-  const payDate = pick[4] ? fmtDate(parseTWSEDate(pick[4])) : null;
-  const perUnit = Number(String(pick[3]).replace(/,/g, '')) || 0;
+  // 優先選當月或最近期的記錄
+  candidates.sort((a, b) => b.exD - a.exD);
+  const picked =
+    candidates.find(c =>
+      c.exD.getFullYear() === thisYear &&
+      c.exD.getMonth() + 1 === thisMonth
+    ) ??
+    candidates.find(c =>
+      c.payD &&
+      c.payD.getFullYear() === thisYear &&
+      c.payD.getMonth() + 1 === thisMonth
+    ) ??
+    candidates[0];
 
-  if (!exDate || !perUnit) return null;
-  return { exDate, payDate, perUnit };
+  return {
+    exDate:  fmtDate(picked.exD),
+    payDate: picked.payD ? fmtDate(picked.payD) : null,
+    perUnit: picked.amt,
+  };
+}
+
+/**
+ * 解析民國年日期：「115年05月06日」→ Date
+ */
+function parseROCDate(s) {
+  if (!s) return null;
+  const m = String(s).match(/(\d{2,3})年(\d{1,2})月(\d{1,2})日/);
+  if (!m) return null;
+  return new Date(Number(m[1]) + 1911, Number(m[2]) - 1, Number(m[3]));
 }
 
 /**
@@ -162,7 +210,7 @@ function parseTWSEDate(s) {
  */
 async function getUSData(code) {
   const data = await fetchJSON(
-    `https://query1.finance.yahoo.com/v8/finance/chart/${code}?range=1y&interval=1d&events=div`
+    `https://query2.finance.yahoo.com/v8/finance/chart/${code}?range=1y&interval=1d&events=div`
   );
   const result = data?.chart?.result?.[0];
   const meta   = result?.meta;
@@ -202,7 +250,7 @@ async function getUSData(code) {
 
 async function getUSDTWD() {
   const data = await fetchJSON(
-    'https://query1.finance.yahoo.com/v8/finance/chart/USDTWD=X?range=1d&interval=1d'
+    'https://query2.finance.yahoo.com/v8/finance/chart/USDTWD=X?range=1d&interval=1d'
   );
   const meta = data?.chart?.result?.[0]?.meta;
   if (!meta) return 32;
@@ -265,21 +313,52 @@ function applyMonthlyRollForward(code, exDate, payDate, perUnit) {
 
 async function scrapeAll() {
   console.log('[scraper] 開始抓取...');
-  const now    = new Date();
-  const fxRate = await getUSDTWD();
-  console.log(`[scraper] 匯率 USD/TWD = ${fxRate}`);
+  const now = new Date();
 
   const cache = {};
+  const prices = {}; // code → price (TWD) or priceUSD (USD)
 
-  // 台股
+  // ── Phase 1：台股現價（TWSE mis API，無頻率限制）────────────────────────────
+  console.log('[scraper] Phase 1: 台股現價（TWSE）...');
   for (const code of CONFIG.ALL_TW_STOCKS) {
     try {
-      const price = await getTWPrice(code);
+      prices[code] = await getTWPrice(code);
+      console.log(`[scraper]   ${code} 現價=${prices[code]}`);
+    } catch (e) {
+      console.error(`[scraper] ${code} 價格失敗:`, e.message);
+      prices[code] = null;
+    }
+  }
 
-      // 優先 Yahoo，備援 TWSE JSON（僅上市股）
-      let divInfo = await getTWDividend(code);
-      if (!divInfo && !CONFIG.OTC_STOCKS.includes(code)) {
-        divInfo = await getTWDividendFromTWSE(code);
+  // ── Phase 2：等待 15 秒，讓 Yahoo Finance rate-limit 冷卻 ─────────────────
+  console.log('[scraper] Phase 2: 等待 15s（Yahoo rate-limit 冷卻）...');
+  await sleep(15000);
+
+  // ── Phase 3：匯率（Yahoo，先單獨取）──────────────────────────────────────
+  const fxRate = await getUSDTWD();
+  console.log(`[scraper] 匯率 USD/TWD = ${fxRate}`);
+  await sleep(3000);
+
+  // ── Phase 3b：TWSE ETFortune HTML（上市股一次撈全部）────────────────────
+  // TWSE HTML 一次請求即可取得所有上市 ETF 股利資料，比逐支查 Yahoo 更穩定
+  console.log('[scraper] Phase 3b: TWSE ETFortune HTML 批次抓取...');
+  const twseDivCache = {};
+  for (const code of CONFIG.ALL_TW_STOCKS.filter(c => !CONFIG.OTC_STOCKS.includes(c))) {
+    const d = await getTWDividendFromTWSE(code);
+    if (d) twseDivCache[code] = d;
+    console.log(`[scraper]   TWSE ${code} → exDate=${d?.exDate ?? 'null'} perUnit=${d?.perUnit ?? 0}`);
+  }
+
+  // ── Phase 4：台股股利（TWSE HTML 優先，Yahoo 補 OTC，2s 間隔）────────────
+  console.log('[scraper] Phase 4: 台股股利...');
+  for (const code of CONFIG.ALL_TW_STOCKS) {
+    try {
+      // 上市股：優先用 TWSE HTML（已批次抓），再嘗試 Yahoo
+      // OTC 股：只走 Yahoo Finance（.TWO suffix）
+      let divInfo = twseDivCache[code] ?? null;
+      if (!divInfo) {
+        divInfo = await getTWDividend(code);
+        await sleep(2000);
       }
 
       let exDate  = divInfo?.exDate  ?? null;
@@ -295,14 +374,16 @@ async function scrapeAll() {
         isEstimated = rolled.isEstimated;
       }
 
-      cache[code] = { price, exDate, payDate, perUnit, isEstimated, currency: 'TWD', updatedAt: now.toISOString() };
-      console.log(`[scraper] ${code} 價格=${price} 除息=${exDate} 發放=${payDate} 股利=${perUnit}${isEstimated ? ' (預估)' : ''}`);
+      cache[code] = { price: prices[code], exDate, payDate, perUnit, isEstimated, currency: 'TWD', updatedAt: now.toISOString() };
+      console.log(`[scraper] ${code} 價格=${prices[code]} 除息=${exDate} 發放=${payDate} 股利=${perUnit}${isEstimated ? ' (預估)' : ''}`);
     } catch (e) {
-      console.error(`[scraper] ${code} 失敗:`, e.message);
+      console.error(`[scraper] ${code} 股利失敗:`, e.message);
+      cache[code] = { price: prices[code] ?? null, exDate: null, payDate: null, perUnit: 0, isEstimated: false, currency: 'TWD', updatedAt: now.toISOString() };
     }
   }
 
-  // 美股
+  // ── Phase 5：美股（Yahoo，2s 間隔）─────────────────────────────────────────
+  console.log('[scraper] Phase 5: 美股...');
   for (const code of CONFIG.US_STOCKS) {
     try {
       const q = await getUSData(code);
@@ -322,6 +403,7 @@ async function scrapeAll() {
     } catch (e) {
       console.error(`[scraper] ${code} 失敗:`, e.message);
     }
+    await sleep(2000);
   }
 
   // 寫入快取
