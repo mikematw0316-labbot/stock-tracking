@@ -1,6 +1,6 @@
 'use strict';
 /**
- * scraper.js — 爬取股價 + 股利資料，寫入 data/cache.json
+ * scraper.js — 爬取股價 + 股利資料，寫入 data/cache.json + Google Sheets PriceCache
  *
  * 資料來源：
  *   台股股價：Yahoo Finance (.TW / .TWO)
@@ -14,9 +14,14 @@
  *   - 所有密鑰從 .env 讀取，不寫在程式裡
  */
 
+require('dotenv').config();
+
 const fs   = require('fs');
 const path = require('path');
+const { google } = require('googleapis');
 const CONFIG = require('./config');
+
+const SHEET_ID = process.env.SHEET_ID || '1juUR2My4_iQKwXQkA1A9xHD_R5TRFsq5Z_qcbh2ixgk';
 
 const CACHE_FILE = path.join(__dirname, 'data', 'cache.json');
 const UA = 'Mozilla/5.0';
@@ -520,6 +525,59 @@ function applyMonthlyRollForward(code, exDate, payDate, perUnit) {
   };
 }
 
+// ─── Google Sheets PriceCache 寫入 ───────────────────────────────────────────
+
+/**
+ * 將 cache 寫入 Google Sheets PriceCache 工作表
+ * 欄位：[Code, Price, ExDate, PayDate, PerUnit, Currency, FxRate, IsEstimated, UpdatedAt]
+ */
+async function writePriceCache(cache) {
+  let saJson;
+  if (process.env.GOOGLE_SA_JSON) {
+    saJson = JSON.parse(process.env.GOOGLE_SA_JSON);
+  } else {
+    const saPath = process.env.GOOGLE_SA_PATH ||
+      path.join('/Volumes/外接硬碟/gcp-service-account.json');
+    if (!fs.existsSync(saPath)) {
+      console.warn('[scraper] GOOGLE_SA_JSON 未設定，跳過 Sheets 寫入');
+      return;
+    }
+    saJson = JSON.parse(fs.readFileSync(saPath, 'utf8'));
+  }
+
+  try {
+    const auth = new google.auth.GoogleAuth({
+      credentials: saJson,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+    const sheets = google.sheets({ version: 'v4', auth });
+
+    const header = [['Code','Price','ExDate','PayDate','PerUnit','Currency','FxRate','IsEstimated','UpdatedAt']];
+    const rows = Object.entries(cache).map(([code, v]) => [
+      code,
+      v.price ?? '',
+      v.exDate ?? '',
+      v.payDate ?? '',
+      v.perUnit ?? '',
+      v.currency ?? '',
+      v.fxRate ?? '',
+      v.isEstimated ? 'TRUE' : 'FALSE',
+      v.updatedAt ?? '',
+    ]);
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: 'PriceCache!A1',
+      valueInputOption: 'RAW',
+      requestBody: { values: [...header, ...rows] },
+    });
+
+    console.log(`[scraper] PriceCache 已寫入 Google Sheets（${rows.length} 筆）`);
+  } catch (e) {
+    console.error('[scraper] Sheets 寫入失敗:', e.message);
+  }
+}
+
 // ─── 主流程 ───────────────────────────────────────────────────────────────────
 
 async function scrapeAll() {
@@ -624,6 +682,10 @@ async function scrapeAll() {
   fs.mkdirSync(path.dirname(CACHE_FILE), { recursive: true });
   fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2), 'utf8');
   console.log(`[scraper] 完成，已寫入 ${CACHE_FILE}`);
+
+  // 同步寫入 Google Sheets PriceCache
+  await writePriceCache(cache);
+
   return cache;
 }
 
