@@ -45,3 +45,52 @@ function doPost(e) {
 //     const data = getUserSettings(String(e.parameter.user).trim());
 //     return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
 //   }
+
+// ── 以下貼到同一個 GAS 檔案（helper functions）────────────────────────────────
+
+const SHEET_ID = '1juUR2My4_iQKwXQkA1A9xHD_R5TRFsq5Z_qcbh2ixgk';
+const DATA_SHEET = 'UserData';  // 欄位：[LineId, StockCode, Lots, Price, UpdatedAt]
+
+/**
+ * 將使用者持倉寫入 UserData 工作表
+ * payload 格式：{ [stockCode]: { lots, cost } }
+ */
+function saveUserSettings(lineId, payload) {
+  const ss    = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName(DATA_SHEET);
+  const all   = sheet.getDataRange().getValues();
+  const now   = new Date().toISOString();
+
+  // 從最後一行往前刪，避免 row index 偏移
+  for (let i = all.length - 1; i >= 1; i--) {
+    if (String(all[i][0]) === lineId) sheet.deleteRow(i + 1);
+  }
+
+  // 補上新資料
+  for (const [code, h] of Object.entries(payload || {})) {
+    const lots = Number(h.lots  || 0);
+    const cost = Number(h.cost  || 0);
+    if (lots <= 0) continue;
+    sheet.appendRow([lineId, code, lots, cost, now]);
+  }
+}
+
+/**
+ * 讀取使用者持倉（供 api=load GET 使用）
+ */
+function getUserSettings(lineId) {
+  const ss    = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName(DATA_SHEET);
+  const rows  = sheet.getDataRange().getValues();
+  const holdings = {};
+
+  for (let i = 1; i < rows.length; i++) {
+    const [id, code, lots, price] = rows[i];
+    if (String(id) !== lineId || !code) continue;
+    holdings[String(code).replace(/^'/, '').trim()] = {
+      lots: Number(lots  || 0),
+      cost: Number(price || 0),
+    };
+  }
+  return { holdings };
+}

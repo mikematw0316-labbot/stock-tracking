@@ -356,12 +356,28 @@ function submitAndCompute() {
     };
   });
   saveLocal();
+  saveToSheets();
   showLoading('計算中...');
   setTimeout(() => { renderResult(); hideLoading(); }, 50);
 }
 
 function saveLocal() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ _userId: currentUser, _portfolio: portfolio })); } catch(e) {}
+}
+
+/* ── 儲存持倉到 Google Sheets ── */
+async function saveToSheets() {
+  if (!currentUser || !currentUser.startsWith('U')) return;
+  try {
+    await fetch(GAS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'save', user: currentUser, payload: portfolio }),
+    });
+  } catch(e) {
+    console.warn('Sheets 儲存失敗:', e);
+  }
 }
 
 /* ── 計算核心 ── */
