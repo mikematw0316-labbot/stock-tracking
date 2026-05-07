@@ -1,9 +1,8 @@
 name: Daily Scrape & LINE Notify
 
 on:
-  # 暫停自動執行，等 Cloudflare Worker 設定完成後再開啟
-  # schedule:
-  #   - cron: '0 6 * * *'
+  schedule:
+    - cron: '0 6 * * *'   # 每天 06:00 UTC = 14:00 台灣時間
   workflow_dispatch:
 
 permissions:
@@ -36,6 +35,7 @@ jobs:
           git push
 
       - name: Send LINE notifications
+        continue-on-error: true   # 推播未設定時不影響 cache 寫入
         env:
           LINE_ACCESS_TOKEN: ${{ secrets.LINE_ACCESS_TOKEN }}
           GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
