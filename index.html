@@ -222,6 +222,7 @@ const STORAGE_KEY = 'stock-tracking-portfolio';
 
 const CACHE_URL  = './data/cache.json';
 const LIFF_ID    = '2008788168-sWY2AMfB';
+const GAS_API    = 'https://script.google.com/macros/s/AKfycbzHJnNuQcXs3XCJSh88NRFmNkdE_S7_14Bvjz_f_DccfJC8sMCW5MWyElgPDdqfYQ8a/exec';
 
 let globalCache = null;
 let currentUser = null;
@@ -247,7 +248,11 @@ window.onload = async function() {
       const profile = await liff.getProfile();
       currentUser = profile.userId;
       document.getElementById('userInput').value = currentUser;
+      showLoading('載入持股中...');
+      const sheetsData = await loadFromSheets(currentUser);
+      if (sheetsData) portfolio = sheetsData;
       saveLocal();
+      hideLoading();
       showPortfolioForm();
       return;
     }
@@ -267,13 +272,38 @@ window.onload = async function() {
   }
 };
 
+/* ── GAS Sheets 讀寫 ── */
+async function loadFromSheets(userId) {
+  try {
+    const res = await fetch(GAS_API, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'load', user: userId }),
+    });
+    const json = await res.json();
+    if (json.ok && json.data && json.data.holdings) return json.data.holdings;
+  } catch(e) {}
+  return null;
+}
+async function saveToSheets(userId, payload) {
+  try {
+    await fetch(GAS_API, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'save', user: userId, payload }),
+    });
+  } catch(e) {}
+}
+
 /* ── LINE LIFF 登入 ── */
 function loginWithLine() {
   try {
     if (liff.isLoggedIn()) {
-      liff.getProfile().then(profile => {
+      liff.getProfile().then(async profile => {
         currentUser = profile.userId;
+        showLoading('載入持股中...');
+        const sheetsData = await loadFromSheets(currentUser);
+        if (sheetsData) portfolio = sheetsData;
         saveLocal();
+        hideLoading();
         showPortfolioForm();
       });
     } else {
@@ -339,6 +369,7 @@ function submitAndCompute() {
     };
   });
   saveLocal();
+  if (currentUser && currentUser.startsWith('U')) saveToSheets(currentUser, portfolio);
   showLoading('計算中...');
   setTimeout(() => { renderResult(); hideLoading(); }, 50);
 }
