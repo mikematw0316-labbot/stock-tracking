@@ -552,9 +552,16 @@ async function writePriceCache(cache) {
     });
     const sheets = google.sheets({ version: 'v4', auth });
 
-    const header = [['Code','Price','ExDate','PayDate','PerUnit','Currency','FxRate','IsEstimated','UpdatedAt']];
+    const toTW = iso => {
+      if (!iso) return '';
+      return new Date(iso).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: false });
+    };
+    const header = [['Code','Price','ExDate','PayDate','PerUnit','Currency','FxRate','IsEstimated','UpdatedAt(台灣時間)']];
     const rows = Object.entries(cache).map(([code, v]) => [
-      code,
+      // 純數字代碼加 ' 前綴，防止 Sheets 吃掉前導零
+      /^\d+$/.test(code) ? "'" + code : code,
       v.price ?? '',
       v.exDate ?? '',
       v.payDate ?? '',
@@ -562,7 +569,7 @@ async function writePriceCache(cache) {
       v.currency ?? '',
       v.fxRate ?? '',
       v.isEstimated ? 'TRUE' : 'FALSE',
-      v.updatedAt ?? '',
+      toTW(v.updatedAt),
     ]);
 
     await sheets.spreadsheets.values.update({
