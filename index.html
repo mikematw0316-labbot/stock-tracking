@@ -111,9 +111,6 @@ body::before{
     <h1 id="loginTitle" style="font-size:26px;font-weight:900;letter-spacing:-.5px;color:var(--tx);line-height:1.15;">
       股利查詢
     </h1>
-    <p style="margin-top:7px;font-size:13px;color:var(--tx3);font-weight:500;">
-      智慧追蹤您的投資現金流
-    </p>
   </div>
 
   <!-- LINE 登入 -->
@@ -127,16 +124,16 @@ body::before{
   <!-- 帳號登入 -->
   <div class="card" style="padding:20px;margin-bottom:8px;">
     <div style="margin-bottom:14px;">
-      <label class="lbl" for="userInput">帳號名稱</label>
-      <input id="userInput" class="inp" type="text" placeholder="輸入您的自訂帳號">
+      <label class="lbl" style="color:var(--tx);" for="userInput">帳號名稱</label>
+      <input id="userInput" class="inp" type="text" placeholder="可輸入自訂帳號，下次輸入同帳號即可查詢持股內容">
     </div>
-    <button onclick="loginWithId()" class="btn btn-primary">
-      進入系統 <i data-lucide="arrow-right" style="width:15px;height:15px;"></i>
+    <button onclick="loginWithId()" class="btn btn-primary" style="font-size:13px;">
+      進入系統(不用註冊，但要記得你儲存的自訂帳號) <i data-lucide="arrow-right" style="width:15px;height:15px;flex-shrink:0;"></i>
     </button>
   </div>
 
-  <p style="text-align:center;font-size:11px;color:var(--tx3);line-height:1.75;margin-top:16px;padding:0 4px;">
-    推薦綁定 LINE 帳號，系統將每日自動推播<br>最新的股利與損益分析報表。
+  <p style="text-align:center;font-size:11px;color:var(--tx);line-height:1.75;margin-top:16px;padding:0 4px;">
+    推薦綁定 LINE 帳號<br>將每日自動推播最新的股利與損益統計資訊
   </p>
 </main>
 
