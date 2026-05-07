@@ -95,6 +95,8 @@ function saveUserSettings(userId, payload) {
     const lots = Number(h.lots || 0);
     const cost = Number(h.cost || 0);
     if (lots <= 0) continue;
-    sheet.appendRow([userId, code, lots, cost, now]);
+    // 純數字代碼加 ' 前綴，防止 Sheets 吃掉前導零（0056 → 56）
+    const storeCode = /^\d+$/.test(code) ? "'" + code : code;
+    sheet.appendRow([userId, storeCode, lots, cost, now]);
   }
 }
