@@ -124,11 +124,12 @@ body::before{
   <!-- 帳號登入 -->
   <div class="card" style="padding:20px;margin-bottom:8px;">
     <div style="margin-bottom:14px;">
-      <label class="lbl" style="color:var(--tx);font-size:13px;" for="userInput">帳號名稱</label>
+      <label class="lbl" style="color:var(--tx);font-size:13px;text-align:center;display:block;" for="userInput">帳號名稱</label>
       <input id="userInput" class="inp" type="text" placeholder="可輸入自訂帳號，下次輸入同帳號即可查詢持股內容">
     </div>
-    <button onclick="loginWithId()" class="btn btn-primary" style="font-size:13px;">
-      使用自訂帳號進入系統 ( 不用註冊，但要記得你本次輸入的自訂帳號 ) <i data-lucide="arrow-right" style="width:15px;height:15px;flex-shrink:0;"></i>
+    <button onclick="loginWithId()" class="btn btn-primary" style="font-size:13px;flex-direction:column;gap:2px;height:auto;padding:12px 16px;">
+      <span>使用自訂帳號進入系統</span>
+      <span style="font-size:11px;font-weight:500;opacity:0.85;">(不用註冊，但要記得本次輸入的自訂帳號)</span>
     </button>
   </div>
 
