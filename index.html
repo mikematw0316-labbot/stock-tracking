@@ -212,11 +212,15 @@ const BOARD_LOT     = 1000;
 const US_TAX        = 0.30;
 const STORAGE_KEY   = 'stock-tracking-portfolio';
 
-// cache.json が此 repo の data/ に置かれている
+// GitHub Pages 上的本地快取（每日 Actions 更新）
 const CACHE_URL = './data/cache.json';
+
+// GAS Web App URL（用於 LINE 使用者讀寫 Google Sheets）
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbz6m-txGzLktwR3mV76dBc9pANhWf-ZIspibD0L1bWzSOmuLcgIGYRf7bul7Jeeae3h/exec';
 
 let globalCache = null;
 let portfolio   = {};
+let lineUserId  = null;  // 若透過 LINE 登入則有值
 
 /* ── Init ── */
 window.onload = async function() {
@@ -244,6 +248,26 @@ window.onload = async function() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) portfolio = JSON.parse(saved);
   } catch(e) {}
+
+  // 若 URL 有 ?u=LINE_USER_ID，視為 LINE 使用者，從 GAS 拉資料
+  const urlParams = new URLSearchParams(location.search);
+  const urlUser   = urlParams.get('u') || '';
+  if (urlUser.startsWith('U')) {
+    lineUserId = urlUser;
+    showLoading('載入 LINE 持倉...');
+    try {
+      const res = await fetch(`${GAS_URL}?api=load&user=${encodeURIComponent(lineUserId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        // GAS 回傳格式：{ code: { lots, price }, ... }
+        codes.forEach(c => {
+          if (data[c]) portfolio[c] = { lots: data[c].lots ?? 0, cost: data[c].price ?? 0 };
+        });
+      }
+    } catch(e) { console.warn('GAS 載入失敗，使用 localStorage', e); }
+    hideLoading();
+    enterPortfolio();
+  }
 };
 
 /* ── Page routing ── */
@@ -311,14 +335,26 @@ function computeAndShow() {
     return;
   }
 
-  // 讀取 & 儲存持倉
+  // 讀取持倉
   codes.forEach(c => {
     portfolio[c] = {
       lots: Number(document.getElementById('lots_'+c).value) || 0,
       cost: Number(document.getElementById('cost_'+c).value) || 0,
     };
   });
+  // 存 localStorage
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(portfolio)); } catch(e){}
+
+  // 若為 LINE 使用者，同步寫回 GAS（Google Sheets）
+  if (lineUserId) {
+    const gasPayload = {};
+    codes.forEach(c => { gasPayload[c] = { lots: portfolio[c].lots, price: portfolio[c].cost }; });
+    fetch(GAS_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'save', user: lineUserId, payload: gasPayload }),
+    }).catch(e => console.warn('GAS 儲存失敗', e));
+  }
 
   showLoading('計算中...');
   setTimeout(() => {

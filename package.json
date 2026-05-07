@@ -10,7 +10,8 @@
     "test": "node run.js --dry-run"
   },
   "dependencies": {
-    "dotenv": "^16.0.0"
+    "dotenv": "^16.0.0",
+    "googleapis": "^171.4.0"
   },
   "engines": {
     "node": ">=18.0.0"

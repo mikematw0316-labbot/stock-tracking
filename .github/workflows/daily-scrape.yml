@@ -4,7 +4,7 @@ on:
   schedule:
     # 每天 06:00 UTC = 台灣時間 14:00
     - cron: '0 6 * * *'
-  workflow_dispatch:  # 手動觸發
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -38,5 +38,6 @@ jobs:
       - name: Send LINE notifications
         env:
           LINE_ACCESS_TOKEN: ${{ secrets.LINE_ACCESS_TOKEN }}
-          LINE_USERS_JSON: ${{ secrets.LINE_USERS_JSON }}
+          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
         run: node notify.js
