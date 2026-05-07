@@ -1,9 +1,9 @@
 name: Daily Scrape & LINE Notify
 
 on:
-  schedule:
-    # 每天 06:00 UTC = 台灣時間 14:00
-    - cron: '0 6 * * *'
+  # 暫停自動執行，等 Cloudflare Worker 設定完成後再開啟
+  # schedule:
+  #   - cron: '0 6 * * *'
   workflow_dispatch:
 
 permissions:
