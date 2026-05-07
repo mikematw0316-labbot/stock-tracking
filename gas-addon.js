@@ -17,7 +17,7 @@ function doPost(e) {
     const body = JSON.parse(e.postData.contents);
     const { action, user, payload } = body;
 
-    if (!user || !user.startsWith('U')) {
+    if (!user || user.trim() === '') {
       output.setContent(JSON.stringify({ ok: false, error: 'invalid user' }));
       return output;
     }

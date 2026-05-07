@@ -315,11 +315,15 @@ function loginWithLine() {
 }
 
 /* ── 帳號登入 ── */
-function loginWithId() {
+async function loginWithId() {
   const val = document.getElementById('userInput').value.trim();
   if (!val) { alert('請輸入帳號'); return; }
   currentUser = val;
+  showLoading('載入持股中...');
+  const sheetsData = await loadFromSheets(currentUser);
+  if (sheetsData) portfolio = sheetsData;
   saveLocal();
+  hideLoading();
   showPortfolioForm();
 }
 
@@ -369,7 +373,7 @@ function submitAndCompute() {
     };
   });
   saveLocal();
-  if (currentUser && currentUser.startsWith('U')) saveToSheets(currentUser, portfolio);
+  if (currentUser) saveToSheets(currentUser, portfolio);
   showLoading('計算中...');
   setTimeout(() => { renderResult(); hideLoading(); }, 50);
 }
