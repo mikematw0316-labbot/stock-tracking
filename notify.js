@@ -199,7 +199,7 @@ function buildMessage(result) {
 
   msg += `────────────────\n\n`;
   msg += `🔗 手動查詢/修改：\n\n`;
-  msg += `https://mikematw0316-labbot.github.io/stock-tracking/`;
+  msg += `https://liff.line.me/2008788168-sWY2AMfB?openExternalBrowser=0`;
 
   return msg;
 }
