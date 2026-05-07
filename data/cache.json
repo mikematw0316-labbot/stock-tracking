@@ -1,0 +1,10 @@
+{
+  "0056":   { "price": null, "exDate": null, "payDate": null, "perUnit": 0, "isEstimated": false, "currency": "TWD", "updatedAt": null },
+  "00878":  { "price": null, "exDate": null, "payDate": null, "perUnit": 0, "isEstimated": false, "currency": "TWD", "updatedAt": null },
+  "00919":  { "price": null, "exDate": null, "payDate": null, "perUnit": 0, "isEstimated": false, "currency": "TWD", "updatedAt": null },
+  "00953B": { "price": null, "exDate": null, "payDate": null, "perUnit": 0, "isEstimated": false, "currency": "TWD", "updatedAt": null },
+  "00937B": { "price": null, "exDate": null, "payDate": null, "perUnit": 0, "isEstimated": false, "currency": "TWD", "updatedAt": null },
+  "00933B": { "price": null, "exDate": null, "payDate": null, "perUnit": 0, "isEstimated": false, "currency": "TWD", "updatedAt": null },
+  "QQQI":   { "price": null, "exDate": null, "payDate": null, "perUnit": 0, "isEstimated": false, "currency": "USD", "fxRate": 32, "updatedAt": null },
+  "CLOZ":   { "price": null, "exDate": null, "payDate": null, "perUnit": 0, "isEstimated": false, "currency": "USD", "fxRate": 32, "updatedAt": null }
+}

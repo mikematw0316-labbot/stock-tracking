@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>股利查詢系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+:root {
+  --bg:#08080a; --surf1:#0f0f12; --surf2:#16161a; --surf3:#1c1c22;
+  --border:#2a2a32; --border2:#222228;
+  --tx:#f2f2f4; --tx2:#8e8e9e; --tx3:#4a4a58;
+  --indigo:#6366f1; --indigo-d:rgba(99,102,241,0.14); --indigo-b:rgba(99,102,241,0.28);
+  --gold:#f0a500; --gold-d:rgba(240,165,0,0.12); --gold-b:rgba(240,165,0,0.25);
+  --green:#22c55e; --green-d:rgba(34,197,94,0.12); --red:#f43f5e;
+  --line:#06C755;
+  --radius-card:14px; --radius-inp:10px; --radius-btn:12px;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+  --sal:env(safe-area-inset-left,0px); --sar:env(safe-area-inset-right,0px);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;min-height:100%;background:var(--bg);color:var(--tx);
+  font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden;}
+::-webkit-scrollbar{width:0;background:transparent;}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% -10%,rgba(99,102,241,0.12) 0%,transparent 70%),
+    repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,255,255,0.012) 40px),
+    repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,0.012) 40px);
+}
+.page{
+  position:relative;z-index:1;display:none;flex-direction:column;
+  width:100%;min-height:100svh;
+  padding-left:max(var(--sal),20px);padding-right:max(var(--sar),20px);
+  padding-top:max(var(--sat),28px);padding-bottom:max(var(--sab),32px);
+  animation:pageIn .3s cubic-bezier(.16,1,.3,1) both;
+}
+.page.active{display:flex;}
+@keyframes pageIn{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+@media(min-width:640px){.page{max-width:520px;margin:0 auto;padding-left:0;padding-right:0;}}
+.card{background:var(--surf1);border:1px solid var(--border);border-radius:var(--radius-card);}
+.card-inner{background:var(--surf2);border:1px solid var(--border2);border-radius:10px;}
+.inp{
+  display:block;width:100%;height:50px;
+  background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-inp);
+  padding:0 14px;color:var(--tx);font-family:'DM Mono',monospace;font-size:15px;
+  -webkit-appearance:none;outline:none;transition:border-color .15s;
+}
+.inp:focus{border-color:var(--indigo-b);}
+.inp::placeholder{color:var(--tx3);}
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  width:100%;border:none;cursor:pointer;
+  font-family:'DM Sans',sans-serif;font-weight:700;font-size:15px;
+  border-radius:var(--radius-btn);transition:filter .15s,transform .1s;
+}
+.btn:active{filter:brightness(.88);transform:scale(.985);}
+.btn-primary{height:52px;background:var(--indigo);color:#fff;}
+.btn-ghost{height:48px;background:transparent;border:1px solid var(--border);color:var(--tx2);font-size:14px;}
+.lbl{display:block;font-size:10px;font-weight:700;color:var(--tx3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:7px;}
+.divider{display:flex;align-items:center;gap:10px;font-size:11px;font-weight:700;color:var(--tx3);letter-spacing:.08em;text-transform:uppercase;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.04em;}
+.badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;}
+.stat-row{display:flex;justify-content:space-between;align-items:flex-end;padding:16px 0;border-bottom:1px solid var(--border2);}
+.stat-row:first-child{padding-top:0;}
+.stat-row:last-child{padding-bottom:0;border-bottom:none;}
+.mono{font-family:'DM Mono',monospace;font-weight:700;}
+.c-gold{color:var(--gold);} .c-green{color:var(--green);} .c-red{color:var(--red);} .c-indigo{color:#818cf8;} .c-muted{color:var(--tx2);}
+.bottom-bar{
+  position:fixed;bottom:0;left:0;right:0;z-index:50;
+  padding:12px 20px max(var(--sab),20px);
+  background:linear-gradient(to bottom,transparent,var(--bg) 38%);
+}
+@media(min-width:640px){.bottom-bar{max-width:520px;left:50%;right:auto;transform:translateX(-50%);}}
+#loading{
+  position:fixed;inset:0;z-index:9999;display:none;flex-direction:column;
+  align-items:center;justify-content:center;
+  background:rgba(8,8,10,.88);backdrop-filter:blur(14px);
+}
+.spin{width:38px;height:38px;border:2px solid var(--border);border-top-color:var(--indigo);
+  border-radius:50%;animation:rot .75s linear infinite;margin-bottom:14px;}
+@keyframes rot{to{transform:rotate(360deg);}}
+.stock-card{padding:18px;}
+.stock-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0;}
+.div-sep{margin-top:16px;padding-top:16px;border-top:1px solid var(--border2);}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spin"></div>
+  <div id="loadingText" style="font-size:13px;font-weight:600;color:var(--tx2);">處理中...</div>
+</div>
+
+<!-- ══ 頁面：首頁 ══ -->
+<main id="pageLogin" class="page active" style="justify-content:center;">
+  <div style="text-align:center;margin-bottom:36px;">
+    <div style="display:inline-flex;align-items:center;justify-content:center;
+      width:52px;height:52px;border-radius:14px;
+      background:var(--indigo-d);border:1px solid var(--indigo-b);margin-bottom:18px;">
+      <i data-lucide="trending-up" style="width:22px;height:22px;color:var(--indigo);"></i>
+    </div>
+    <h1 id="loginTitle" style="font-size:26px;font-weight:900;letter-spacing:-.5px;color:var(--tx);line-height:1.15;">
+      股利查詢
+    </h1>
+    <p style="margin-top:7px;font-size:13px;color:var(--tx3);font-weight:500;">
+      智慧追蹤您的投資現金流
+    </p>
+  </div>
+
+  <div class="card" style="padding:20px;margin-bottom:14px;">
+    <p style="font-size:12px;color:var(--tx2);margin-bottom:16px;line-height:1.6;">
+      持倉資料存在您的瀏覽器 (localStorage)，不上傳伺服器。<br>
+      股價 / 股利每日 14:00 自動更新。
+    </p>
+    <button onclick="enterPortfolio()" class="btn btn-primary">
+      <i data-lucide="bar-chart-2" style="width:15px;height:15px;"></i>
+      設定持倉 / 查看分析
+    </button>
+  </div>
+
+  <p id="cacheTs" style="text-align:center;font-size:11px;color:var(--tx3);margin-top:8px;"></p>
+</main>
+
+<!-- ══ 頁面：持倉設定 ══ -->
+<main id="pageHome" class="page">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <button onclick="showPage('pageLogin')"
+      style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+             background:var(--surf1);border:1px solid var(--border);border-radius:9px;
+             color:var(--tx2);cursor:pointer;flex-shrink:0;">
+      <i data-lucide="arrow-left" style="width:15px;height:15px;"></i>
+    </button>
+    <span style="font-size:15px;font-weight:700;color:var(--tx);">持股庫存設定</span>
+    <div style="width:34px;"></div>
+  </div>
+
+  <div style="display:flex;gap:9px;align-items:flex-start;
+    padding:13px 15px;margin-bottom:20px;
+    background:var(--indigo-d);border:1px solid var(--indigo-b);border-radius:11px;">
+    <i data-lucide="info" style="width:14px;height:14px;color:var(--indigo);flex-shrink:0;margin-top:1px;"></i>
+    <p style="font-size:12px;color:#a5b4fc;line-height:1.65;">
+      請輸入持有數量與平均成本，資料存在本機瀏覽器。若無持有，保留空白即可。
+    </p>
+  </div>
+
+  <div id="stockInputs" style="display:flex;flex-direction:column;gap:10px;padding-bottom:90px;"></div>
+
+  <div class="bottom-bar">
+    <button onclick="computeAndShow()" class="btn btn-primary">
+      <i data-lucide="zap" style="width:15px;height:15px;"></i> 開始智能分析
+    </button>
+  </div>
+</main>
+
+<!-- ══ 頁面：結果 ══ -->
+<main id="pageResult" class="page">
+  <div style="margin-bottom:20px;">
+    <h2 id="resultTitle" style="font-size:24px;font-weight:900;letter-spacing:-.5px;color:var(--tx);">股利分析</h2>
+    <p id="updateTime" style="font-size:11px;color:var(--tx3);margin-top:5px;display:flex;align-items:center;gap:4px;">
+      <i data-lucide="clock" style="width:11px;height:11px;"></i><span></span>
+    </p>
+  </div>
+
+  <div class="card" style="padding:18px 18px 2px;margin-bottom:10px;">
+    <div class="stat-row">
+      <div>
+        <div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">本月預估股利</div>
+        <div id="totalDividendSum" class="mono c-gold" style="font-size:30px;letter-spacing:-1px;line-height:1;">$0</div>
+        <div id="totalDividendParts" style="font-size:10px;color:var(--gold);opacity:.55;margin-top:3px;font-family:'DM Mono',monospace;display:none;"></div>
+      </div>
+      <div style="width:38px;height:38px;border-radius:10px;background:var(--gold-d);
+        display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <i data-lucide="wallet" style="width:17px;height:17px;color:var(--gold);"></i>
+      </div>
+    </div>
+    <div class="stat-row">
+      <div>
+        <div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">帳面損益</div>
+        <div id="totalProfitSum" class="mono c-green" style="font-size:17px;">$0</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">庫存市值</div>
+        <div id="totalValueSum" class="mono c-indigo" style="font-size:17px;">$0</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:18px;margin-bottom:6px;">
+    <div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;">持股詳細分析</div>
+    <div id="resultList" style="display:flex;flex-direction:column;gap:8px;"></div>
+  </div>
+
+  <button onclick="showPage('pageHome')" class="btn btn-ghost" style="margin-top:18px;margin-bottom:16px;">
+    <i data-lucide="arrow-left" style="width:14px;height:14px;"></i> 返回修改庫存
+  </button>
+</main>
+
+<script>
+/* ── Config ── */
+const codes         = ["0056","00878","00919","00953B","00937B","00933B","QQQI","CLOZ"];
+const usStocks      = ["QQQI","CLOZ"];
+const monthlyETFs   = ["00953B","00937B","00933B","QQQI","CLOZ"];
+const BOARD_LOT     = 1000;
+const US_TAX        = 0.30;
+const STORAGE_KEY   = 'stock-tracking-portfolio';
+
+// cache.json が此 repo の data/ に置かれている
+const CACHE_URL = './data/cache.json';
+
+let globalCache = null;
+let portfolio   = {};
+
+/* ── Init ── */
+window.onload = async function() {
+  lucide.createIcons();
+  const m = new Date().getMonth() + 1;
+  document.getElementById('loginTitle').innerText = m + '月股利查詢';
+  document.getElementById('resultTitle').innerText = m + '月股利分析';
+
+  // 載入快取
+  try {
+    const res = await fetch(CACHE_URL + '?t=' + Date.now());
+    if (res.ok) {
+      globalCache = await res.json();
+      const ts = Object.values(globalCache).map(v => v.updatedAt).sort().pop();
+      if (ts) {
+        const d = new Date(ts);
+        document.getElementById('cacheTs').innerText =
+          '資料更新：' + d.toLocaleString('zh-TW', { timeZone:'Asia/Taipei', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+      }
+    }
+  } catch(e) { console.warn('cache.json 載入失敗', e); }
+
+  // 讀取 localStorage 持倉
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) portfolio = JSON.parse(saved);
+  } catch(e) {}
+};
+
+/* ── Page routing ── */
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => {
+    p.classList.remove('active');
+    p.style.display = 'none';
+  });
+  const el = document.getElementById(id);
+  el.style.display = 'flex';
+  void el.offsetWidth;
+  el.classList.add('active');
+  window.scrollTo({ top:0 });
+}
+
+function showLoading(text) {
+  document.getElementById('loadingText').innerText = text || '處理中...';
+  document.getElementById('loading').style.display = 'flex';
+}
+function hideLoading() {
+  document.getElementById('loading').style.display = 'none';
+}
+
+/* ── 進入持倉設定頁 ── */
+function enterPortfolio() {
+  showPage('pageHome');
+  const box = document.getElementById('stockInputs');
+  box.innerHTML = '';
+  codes.forEach(code => {
+    const isUS = usStocks.includes(code);
+    const h    = portfolio[code] || {};
+    const wrap = document.createElement('div');
+    wrap.className = 'card';
+    wrap.style.cssText = 'padding:16px;';
+    wrap.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <span style="font-size:19px;font-weight:800;color:var(--tx);letter-spacing:-.3px;">${code}</span>
+        <span class="badge" style="
+          background:${isUS ? 'rgba(99,102,241,0.14)' : 'rgba(255,255,255,0.05)'};
+          color:${isUS ? '#818cf8' : 'var(--tx3)'};">
+          ${isUS ? '🇺🇸 美股' : '🇹🇼 台股'}
+        </span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
+        <div>
+          <label class="lbl">持有${isUS ? '股數' : '張數'}</label>
+          <input id="lots_${code}" class="inp" type="number" placeholder="0"
+            value="${h.lots ?? ''}" style="height:48px;font-size:15px;">
+        </div>
+        <div>
+          <label class="lbl">平均成本</label>
+          <input id="cost_${code}" class="inp" type="number" placeholder="0.0"
+            value="${h.cost ?? ''}" style="height:48px;font-size:15px;">
+        </div>
+      </div>`;
+    box.appendChild(wrap);
+  });
+  lucide.createIcons();
+}
+
+/* ── 計算並顯示 ── */
+function computeAndShow() {
+  if (!globalCache) {
+    alert('股價資料尚未載入，請稍後再試或重新整理頁面。');
+    return;
+  }
+
+  // 讀取 & 儲存持倉
+  codes.forEach(c => {
+    portfolio[c] = {
+      lots: Number(document.getElementById('lots_'+c).value) || 0,
+      cost: Number(document.getElementById('cost_'+c).value) || 0,
+    };
+  });
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(portfolio)); } catch(e){}
+
+  showLoading('計算中...');
+  setTimeout(() => {
+    try { renderResult(); } catch(e) { alert('計算失敗：' + e.message); }
+    hideLoading();
+  }, 50);
+}
+
+/* ── 計算核心（與 notify.js 邏輯一致）── */
+function computeAll() {
+  const today     = new Date();
+  const thisYear  = today.getFullYear();
+  const thisMonth = today.getMonth() + 1;
+
+  let totalDiv=0, totalProfit=0, totalValue=0;
+  const items = {};
+
+  codes.forEach(code => {
+    const h       = portfolio[code] || {};
+    const lots    = Number(h.lots  || 0);
+    const cost    = Number(h.cost  || 0);
+    if (lots === 0) return;
+
+    const isUS    = usStocks.includes(code);
+    const units   = isUS ? lots : lots * BOARD_LOT;
+    const info    = globalCache[code] || {};
+    const price   = Number(info.price  || 0);
+    const perUnit = Number(info.perUnit|| 0);
+    const fxRate  = isUS ? Number(info.fxRate || 32) : 1;
+
+    const val    = isUS ? price * units * fxRate : price * units;
+    totalValue  += val;
+
+    const profit = (price > 0 && cost > 0)
+      ? Math.round((price - cost) * units * (isUS ? fxRate : 1))
+      : 0;
+    totalProfit += profit;
+
+    const payDate    = info.payDate || '';
+    const isThisMon  = isInYM(payDate, thisYear, thisMonth);
+    let   divAmt     = 0;
+    if (isThisMon && perUnit > 0 && units > 0) {
+      divAmt = isUS
+        ? Math.round(perUnit * units * fxRate * (1 - US_TAX))
+        : Math.round(perUnit * units);
+      totalDiv += divAmt;
+    }
+
+    items[code] = {
+      lots, units, cost, price, profit, divAmt, perUnit, fxRate,
+      exDate: info.exDate, payDate,
+      isEstimated: !!info.isEstimated,
+      isThisMon, isUS,
+    };
+  });
+
+  return { thisMonth, totalDiv, totalProfit, totalValue, items };
+}
+
+function isInYM(s, y, m) {
+  if (!s) return false;
+  const match = String(s).match(/(\d{4})[\/\-](\d{2})/);
+  return match && Number(match[1]) === y && Number(match[2]) === m;
+}
+
+/* ── Render result page ── */
+function renderResult() {
+  const r = computeAll();
+  showPage('pageResult');
+
+  const ts = Object.values(globalCache).map(v => v.updatedAt).sort().pop();
+  const tsStr = ts
+    ? new Date(ts).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})
+    : '未知';
+  document.querySelector('#updateTime span').innerText = '資料更新：' + tsStr;
+  document.getElementById('resultTitle').innerText = r.thisMonth + '月股利分析';
+
+  const fmt = n => '$' + Math.round(n || 0).toLocaleString();
+
+  // Summary
+  let twDiv=0, usDiv=0;
+  codes.forEach(c => {
+    const it = r.items[c];
+    if (!it) return;
+    if (usStocks.includes(c)) usDiv += it.divAmt;
+    else                      twDiv += it.divAmt;
+  });
+  document.getElementById('totalDividendSum').innerText = fmt(twDiv + usDiv);
+  const dp = document.getElementById('totalDividendParts');
+  if (usDiv > 0) { dp.style.display='block'; dp.innerText=`${fmt(twDiv)} + ${fmt(usDiv)} (美)`; }
+  else           { dp.style.display='none'; }
+
+  const profEl = document.getElementById('totalProfitSum');
+  profEl.innerText = (r.totalProfit >= 0 ? '+' : '') + fmt(r.totalProfit);
+  profEl.style.color = r.totalProfit >= 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('totalValueSum').innerText = fmt(r.totalValue);
+
+  // Cards
+  const list = document.getElementById('resultList');
+  list.innerHTML = '';
+  const curM = r.thisMonth;
+
+  codes.forEach(code => {
+    const item = r.items[code];
+    if (!item) return;
+    const { lots, cost, price, profit, divAmt, perUnit, exDate, payDate, isEstimated, isUS } = item;
+
+    const profColor = profit >= 0 ? 'var(--green)' : 'var(--red)';
+    const priceLine = price > 0
+      ? `<span style="color:var(--tx);font-weight:600;">${price}</span>
+         <span style="color:var(--border);margin:0 3px;">/</span>
+         <span style="color:var(--tx3);">${cost || '-'}</span>`
+      : `<span style="color:var(--tx3);">更新中</span>`;
+
+    let divBlock = '';
+    if (divAmt > 0) {
+      const dateShort = payDate ? payDate.slice(5).replace('/','/') : '??';
+      const estStr    = isEstimated ? `<span class="pill" style="background:var(--gold-d);color:var(--gold);margin-left:8px;">預估展延</span>` : '';
+      divBlock = `
+        <div class="div-sep">
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;${exDate?'margin-bottom:10px;':''}">
+            <div>
+              <div class="lbl">本月股利</div>
+              <div class="mono c-gold" style="font-size:22px;letter-spacing:-.5px;">${(isUS?'NT$':'$')+divAmt.toLocaleString()}</div>
+              <div style="font-size:10px;color:var(--tx3);margin-top:2px;">每單位 ${perUnit}</div>
+            </div>
+            ${payDate?`<div style="text-align:right;">
+              <div class="lbl">發放日</div>
+              <div style="font-size:12px;font-weight:600;color:var(--tx);font-family:'DM Mono',monospace;">${dateShort}</div>
+            </div>`:''}
+          </div>
+          ${exDate?`<div style="display:flex;justify-content:space-between;align-items:center;
+            padding:9px 11px;background:var(--surf2);border-radius:8px;border:1px solid var(--border2);">
+            <span style="font-size:11px;color:var(--tx2);">
+              除權息日 <span style="font-family:'DM Mono',monospace;color:var(--tx);margin-left:5px;">${exDate}</span>
+            </span>
+            ${estStr}
+          </div>`:''}
+        </div>`;
+    } else if (monthlyETFs.includes(code)) {
+      divBlock = `
+        <div class="div-sep" style="text-align:center;">
+          <div style="padding:11px;background:var(--gold-d);border-radius:9px;border:1px solid var(--gold-b);">
+            <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:3px;">金額待官方公布</div>
+            <div style="font-size:10px;color:var(--tx3);">${curM}月(預計)發放 / ${curM}月除權息</div>
+          </div>
+        </div>`;
+    } else {
+      divBlock = `
+        <div class="div-sep" style="text-align:center;">
+          <span class="pill" style="background:var(--surf2);color:var(--tx3);border:1px solid var(--border2);font-size:11px;">本月無股利派發</span>
+        </div>`;
+    }
+
+    const card = document.createElement('div');
+    card.className = 'card stock-card';
+    card.innerHTML = `
+      <div class="stock-head">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:20px;font-weight:800;letter-spacing:-.3px;color:var(--tx);line-height:1;">${code}</div>
+          <div style="font-size:12px;font-weight:700;margin-top:5px;color:${profColor};">
+            損益 ${profit>=0?'+':''}${profit.toLocaleString()}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:12px;">
+          <div class="lbl" style="text-align:right;">現價 / 成本</div>
+          <div style="font-size:13px;font-family:'DM Mono',monospace;">${priceLine}</div>
+          <div style="font-size:10px;color:var(--tx3);margin-top:5px;">
+            持有 <span style="color:var(--tx2);font-weight:600;">${lots}</span> ${isUS?'股':'張'}
+          </div>
+        </div>
+      </div>
+      ${divBlock}`;
+    list.appendChild(card);
+  });
+
+  lucide.createIcons();
+}
+</script>
+</body>
+</html>

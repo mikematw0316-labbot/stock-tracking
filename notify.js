@@ -167,7 +167,17 @@ async function notifyAll(dryRun = false) {
   }
 
   const cache = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
-  const users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+
+  // LINE_USERS_JSON env（GitHub Secrets）優先，否則讀本地 users.json
+  let users;
+  if (process.env.LINE_USERS_JSON) {
+    users = JSON.parse(process.env.LINE_USERS_JSON);
+  } else if (fs.existsSync(USERS_FILE)) {
+    users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+  } else {
+    console.log('[notify] 無使用者資料，跳過推播');
+    return;
+  }
 
   // 取最新更新時間
   const updatedAt = Object.values(cache).map(v => v.updatedAt).sort().pop();
