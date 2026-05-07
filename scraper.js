@@ -61,11 +61,16 @@ async function getTWPrice(code) {
 }
 
 /**
- * 取台股股利事件（最近 1 年）
+ * 取台股股利事件（最近 1 年，Yahoo Finance）
  * 回傳 { exDate, payDate, perUnit } | null
  *
- * Yahoo dividends 的 date 欄位即除息日（ex-date），
- * 發放日（payDate）台股慣例 = exDate + ~14 天（實際查 TWSE 備援）。
+ * 邏輯：
+ *   exDate  = 最新一筆除息日（不管當月）
+ *   payDate = 發放日落在當月的那筆（月配 ETF 通常是上月除息→當月發放）
+ *
+ * Yahoo Finance 只有 ex-date，payDate 依類型估算：
+ *   月配 bond ETF（MONTHLY_ETFS）：ex-date + 28 天
+ *   其他：ex-date + 14 天
  */
 async function getTWDividend(code) {
   const suffix = CONFIG.OTC_STOCKS.includes(code) ? '.TWO' : '.TW';
@@ -76,31 +81,37 @@ async function getTWDividend(code) {
   const events = data?.chart?.result?.[0]?.events?.dividends;
   if (!events) return null;
 
+  const isMonthly = CONFIG.MONTHLY_ETFS.includes(code);
+  const gapMs = (isMonthly ? 28 : 14) * 86400000;
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const thisYear  = today.getFullYear();
-  const thisMonth = today.getMonth() + 1;
+  const currY = today.getFullYear();
+  const currM = today.getMonth() + 1;
 
-  const candidates = Object.values(events).map(ev => ({
-    date:   new Date(Number(ev.date || ev.timestamp) * 1000),
-    amount: Number(ev.amount || 0),
-  })).filter(c => c.amount > 0)
-     .sort((a, b) => b.date - a.date);
+  // 每筆：{ exD, payD(估算), amount }，按 exDate 降冪
+  const candidates = Object.values(events).map(ev => {
+    const exD = new Date(Number(ev.date || ev.timestamp) * 1000);
+    const payD = new Date(exD.getTime() + gapMs);
+    return { exD, payD, amount: Number(ev.amount || 0) };
+  }).filter(c => c.amount > 0)
+    .sort((a, b) => b.exD - a.exD);
 
   if (!candidates.length) return null;
 
-  // 優先選當月除息的紀錄，否則取最近一筆
-  const picked =
-    candidates.find(c =>
-      c.date.getFullYear() === thisYear &&
-      c.date.getMonth() + 1 === thisMonth
-    ) ?? candidates[0];
+  // exDate = 最新一筆
+  const latestEx = candidates[0];
 
-  const exDate  = fmtDate(picked.date);
-  // payDate 估算：exDate + 14 天（台股普通估算），月配 ETF 後面 applyRollForward 會再調
-  const payDate = fmtDate(new Date(picked.date.getTime() + 14 * 86400000));
+  // payDate = 找發放日落在當月的那筆
+  const thisMonthPay =
+    candidates.find(c => c.payD.getFullYear() === currY && c.payD.getMonth() + 1 === currM)
+    ?? latestEx;
 
-  return { exDate, payDate, perUnit: picked.amount };
+  return {
+    exDate:  fmtDate(latestEx.exD),
+    payDate: fmtDate(thisMonthPay.payD),
+    perUnit: thisMonthPay.amount,
+  };
 }
 
 /**
@@ -131,14 +142,14 @@ async function getTWDividendFromTWSE(code) {
   // 取出所有 <tr> 並找到含目標代號的那列
   const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
   const today = new Date();
-  const thisYear  = today.getFullYear();
-  const thisMonth = today.getMonth() + 1;
+  today.setHours(0, 0, 0, 0);
+  const currY = today.getFullYear();
+  const currM = today.getMonth() + 1;
 
   const candidates = [];
   let m;
   while ((m = rowRe.exec(html)) !== null) {
     const row = m[1];
-    // 每格 <td> 取純文字
     const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)]
       .map(c => c[1].replace(/<[^>]+>/g, '').trim());
     if (cells.length < 5) continue;
@@ -153,24 +164,17 @@ async function getTWDividendFromTWSE(code) {
   }
   if (!candidates.length) return null;
 
-  // 優先選當月或最近期的記錄
+  // exDate = 最新除息日；payDate = 發放日落在當月的那筆
   candidates.sort((a, b) => b.exD - a.exD);
-  const picked =
-    candidates.find(c =>
-      c.exD.getFullYear() === thisYear &&
-      c.exD.getMonth() + 1 === thisMonth
-    ) ??
-    candidates.find(c =>
-      c.payD &&
-      c.payD.getFullYear() === thisYear &&
-      c.payD.getMonth() + 1 === thisMonth
-    ) ??
-    candidates[0];
+  const latestEx = candidates[0];
+  const thisMonthPay =
+    candidates.find(c => c.payD && c.payD.getFullYear() === currY && c.payD.getMonth() + 1 === currM)
+    ?? latestEx;
 
   return {
-    exDate:  fmtDate(picked.exD),
-    payDate: picked.payD ? fmtDate(picked.payD) : null,
-    perUnit: picked.amt,
+    exDate:  fmtDate(latestEx.exD),
+    payDate: thisMonthPay.payD ? fmtDate(thisMonthPay.payD) : null,
+    perUnit: thisMonthPay.amt,
   };
 }
 
@@ -207,6 +211,11 @@ function parseTWSEDate(s) {
 /**
  * 取美股現價 + 近期股利
  * 回傳 { priceUSD, perUnit, exDate, payDate }
+ *
+ * 邏輯同台股：
+ *   exDate  = 最新除息日
+ *   payDate = 發放日落在當月的那筆
+ *   月配 ETF：ex-date + 28 天估算；其他：ex-date + 7 天（美股一般 T+7 左右）
  */
 async function getUSData(code) {
   const data = await fetchJSON(
@@ -222,28 +231,34 @@ async function getUSData(code) {
   const events = result?.events?.dividends;
   if (!events) return { priceUSD, perUnit: 0, exDate: null, payDate: null };
 
-  const today = new Date();
-  const thisYear  = today.getFullYear();
-  const thisMonth = today.getMonth() + 1;
+  const isMonthly = CONFIG.MONTHLY_ETFS.includes(code);
+  const gapMs = (isMonthly ? 14 : 7) * 86400000;
 
-  const candidates = Object.values(events).map(ev => ({
-    date:   new Date(Number(ev.date || ev.timestamp) * 1000),
-    amount: Number(ev.amount || 0),
-  })).filter(c => c.amount > 0)
-     .sort((a, b) => b.date - a.date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const currY = today.getFullYear();
+  const currM = today.getMonth() + 1;
+
+  const candidates = Object.values(events).map(ev => {
+    const exD  = new Date(Number(ev.date || ev.timestamp) * 1000);
+    const payD = new Date(exD.getTime() + gapMs);
+    return { exD, payD, amount: Number(ev.amount || 0) };
+  }).filter(c => c.amount > 0)
+    .sort((a, b) => b.exD - a.exD);
 
   if (!candidates.length) return { priceUSD, perUnit: 0, exDate: null, payDate: null };
 
-  const picked =
-    candidates.find(c =>
-      c.date.getFullYear() === thisYear &&
-      c.date.getMonth() + 1 === thisMonth
-    ) ?? candidates[0];
+  const latestEx = candidates[0];
+  const thisMonthPay =
+    candidates.find(c => c.payD.getFullYear() === currY && c.payD.getMonth() + 1 === currM)
+    ?? latestEx;
 
-  const exDate  = fmtDate(picked.date);
-  const payDate = fmtDate(new Date(picked.date.getTime() + 3 * 86400000)); // 美股 T+3
-
-  return { priceUSD, perUnit: picked.amount, exDate, payDate };
+  return {
+    priceUSD,
+    perUnit:  thisMonthPay.amount,
+    exDate:   fmtDate(latestEx.exD),
+    payDate:  fmtDate(thisMonthPay.payD),
+  };
 }
 
 // ─── 匯率 ─────────────────────────────────────────────────────────────────────
@@ -361,21 +376,12 @@ async function scrapeAll() {
         await sleep(2000);
       }
 
-      let exDate  = divInfo?.exDate  ?? null;
-      let payDate = divInfo?.payDate ?? null;
-      let perUnit = divInfo?.perUnit ?? 0;
-      let isEstimated = false;
+      const exDate  = divInfo?.exDate  ?? null;
+      const payDate = divInfo?.payDate ?? null;
+      const perUnit = divInfo?.perUnit ?? 0;
 
-      if (CONFIG.MONTHLY_ETFS.includes(code) && exDate) {
-        const rolled = applyMonthlyRollForward(code, exDate, payDate, perUnit);
-        exDate      = rolled.exDate;
-        payDate     = rolled.payDate;
-        perUnit     = rolled.perUnit;
-        isEstimated = rolled.isEstimated;
-      }
-
-      cache[code] = { price: prices[code], exDate, payDate, perUnit, isEstimated, currency: 'TWD', updatedAt: now.toISOString() };
-      console.log(`[scraper] ${code} 價格=${prices[code]} 除息=${exDate} 發放=${payDate} 股利=${perUnit}${isEstimated ? ' (預估)' : ''}`);
+      cache[code] = { price: prices[code], exDate, payDate, perUnit, isEstimated: false, currency: 'TWD', updatedAt: now.toISOString() };
+      console.log(`[scraper] ${code} 價格=${prices[code]} 除息=${exDate} 發放=${payDate} 股利=${perUnit}`);
     } catch (e) {
       console.error(`[scraper] ${code} 股利失敗:`, e.message);
       cache[code] = { price: prices[code] ?? null, exDate: null, payDate: null, perUnit: 0, isEstimated: false, currency: 'TWD', updatedAt: now.toISOString() };
@@ -386,20 +392,10 @@ async function scrapeAll() {
   console.log('[scraper] Phase 5: 美股...');
   for (const code of CONFIG.US_STOCKS) {
     try {
-      const q = await getUSData(code);
-      let { priceUSD, perUnit, exDate, payDate } = q;
-      let isEstimated = false;
+      const { priceUSD, perUnit, exDate, payDate } = await getUSData(code);
 
-      if (CONFIG.MONTHLY_ETFS.includes(code) && exDate) {
-        const rolled = applyMonthlyRollForward(code, exDate, payDate, perUnit);
-        exDate      = rolled.exDate;
-        payDate     = rolled.payDate;
-        perUnit     = rolled.perUnit;
-        isEstimated = rolled.isEstimated;
-      }
-
-      cache[code] = { price: priceUSD, exDate, payDate, perUnit, isEstimated, currency: 'USD', fxRate, updatedAt: now.toISOString() };
-      console.log(`[scraper] ${code} 價格=$${priceUSD} 除息=${exDate} 發放=${payDate} 股利=$${perUnit}${isEstimated ? ' (預估)' : ''}`);
+      cache[code] = { price: priceUSD, exDate, payDate, perUnit, isEstimated: false, currency: 'USD', fxRate, updatedAt: now.toISOString() };
+      console.log(`[scraper] ${code} 價格=$${priceUSD} 除息=${exDate} 發放=${payDate} 股利=$${perUnit}`);
     } catch (e) {
       console.error(`[scraper] ${code} 失敗:`, e.message);
     }

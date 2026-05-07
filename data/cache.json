@@ -6,7 +6,7 @@
     "perUnit": 1,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-07T03:52:46.866Z"
+    "updatedAt": "2026-05-07T04:11:37.036Z"
   },
   "00878": {
     "price": 27.33,
@@ -15,7 +15,7 @@
     "perUnit": 0.42,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-07T03:52:46.866Z"
+    "updatedAt": "2026-05-07T04:11:37.036Z"
   },
   "00919": {
     "price": 24.91,
@@ -24,7 +24,7 @@
     "perUnit": 0.78,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-07T03:52:46.866Z"
+    "updatedAt": "2026-05-07T04:11:37.036Z"
   },
   "00953B": {
     "price": 9.6,
@@ -33,44 +33,44 @@
     "perUnit": 0.061,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-07T03:52:46.866Z"
+    "updatedAt": "2026-05-07T04:11:37.036Z"
   },
   "00937B": {
     "price": 14.81,
     "exDate": "2026/04/20",
-    "payDate": "2026/05/04",
+    "payDate": "2026/05/18",
     "perUnit": 0.072,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-07T03:52:46.866Z"
+    "updatedAt": "2026-05-07T04:11:37.036Z"
   },
   "00933B": {
     "price": 16.01,
     "exDate": "2026/04/20",
-    "payDate": "2026/05/04",
+    "payDate": "2026/05/18",
     "perUnit": 0.072,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-07T03:52:46.866Z"
+    "updatedAt": "2026-05-07T04:11:37.036Z"
   },
   "QQQI": {
     "price": 55.72,
     "exDate": "2026/04/22",
-    "payDate": "2026/05/25",
+    "payDate": "2026/05/06",
     "perUnit": 0.63,
-    "isEstimated": true,
+    "isEstimated": false,
     "currency": "USD",
-    "fxRate": 31.344,
-    "updatedAt": "2026-05-07T03:52:46.866Z"
+    "fxRate": 31.347,
+    "updatedAt": "2026-05-07T04:11:37.036Z"
   },
   "CLOZ": {
     "price": 26.325,
     "exDate": "2026/05/04",
-    "payDate": "2026/05/07",
+    "payDate": "2026/05/18",
     "perUnit": 0.143,
     "isEstimated": false,
     "currency": "USD",
-    "fxRate": 31.344,
-    "updatedAt": "2026-05-07T03:52:46.866Z"
+    "fxRate": 31.347,
+    "updatedAt": "2026-05-07T04:11:37.036Z"
   }
 }
