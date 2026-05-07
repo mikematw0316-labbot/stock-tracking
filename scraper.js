@@ -206,6 +206,76 @@ function parseTWSEDate(s) {
   return null;
 }
 
+// ─── MoneyDJ（台股 B 後綴 ETF 股利：實際除息日 + 發放日）────────────────────
+
+/**
+ * MoneyDJ 配息表（00953B / 00937B / 00933B）
+ * URL: https://www.moneydj.com/ETF/X/Basic/Basic0005.xdjhtm?etfid=CODE.TW
+ * 欄位: [配息基準日, 除息日, 登記日, 發放日, 幣別, 配息總額, 年化配息率]
+ *
+ * 邏輯：
+ *   exDate  = 最新一筆除息日（含尚未發放的未來紀錄）
+ *   payDate = 發放日落在當月的那筆
+ *   perUnit = payDate 那筆的金額；若為空，取最近有金額一筆
+ */
+async function getMoneyDJDividend(code) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
+  let html = '';
+  try {
+    const res = await fetch(
+      `https://www.moneydj.com/ETF/X/Basic/Basic0005.xdjhtm?etfid=${encodeURIComponent(code)}.TW`,
+      { headers: { 'User-Agent': UA }, signal: ctrl.signal }
+    );
+    if (!res.ok) return null;
+    html = await res.text();
+  } catch { return null; }
+  finally { clearTimeout(timer); }
+
+  const rowRe = /<tr[^>]*class="(?:odd|even)"[^>]*>([\s\S]*?)<\/tr>/gi;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const currY = today.getFullYear();
+  const currM = today.getMonth() + 1;
+
+  const rows = [];
+  let m;
+  while ((m = rowRe.exec(html)) !== null) {
+    const cells = [...m[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)]
+      .map(c => c[1].replace(/<[^>]+>/g, '').trim().replace(/&nbsp;/g, ''));
+    if (cells.length < 6) continue;
+    // cells[1]=除息日, cells[3]=發放日, cells[5]=配息總額
+    const exD  = parseYMD(cells[1]);
+    const payD = parseYMD(cells[3]);
+    const amt  = parseFloat(cells[5]) || 0;
+    if (!exD) continue;
+    rows.push({ exD, payD, amt });
+  }
+  if (!rows.length) return null;
+
+  // MoneyDJ 降冪排列 → 轉升冪找 nextEx
+  rows.sort((a, b) => a.exD - b.exD);
+
+  // exDate = 最近即將到來的除息日（>= 今天），若無則取最近過去的
+  const nextEx = rows.find(r => r.exD >= today) ?? rows[rows.length - 1];
+
+  // 找當月發放日
+  const thisMonthPay = rows.find(r =>
+    r.payD && r.payD.getFullYear() === currY && r.payD.getMonth() + 1 === currM
+  ) ?? nextEx;
+
+  // 金額：優先當月那筆，若為 0 找最近有金額的
+  const confirmedRows = rows.filter(r => r.amt > 0);
+  const perUnit = thisMonthPay.amt
+    || (confirmedRows[confirmedRows.length - 1]?.amt ?? 0);
+
+  return {
+    exDate:  fmtDate(nextEx.exD),
+    payDate: thisMonthPay.payD ? fmtDate(thisMonthPay.payD) : null,
+    perUnit,
+  };
+}
+
 // ─── 美股 ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -258,6 +328,132 @@ async function getUSData(code) {
     perUnit:  thisMonthPay.amount,
     exDate:   fmtDate(latestEx.exD),
     payDate:  fmtDate(thisMonthPay.payD),
+  };
+}
+
+// ─── NEOS QQQI 配息（官網）────────────────────────────────────────────────────
+
+/**
+ * https://neosfunds.com/qqqi/
+ * 表格欄位: [Declaration Date, Ex-Div Date, Record Date, Payable Date, Amount ($)]
+ * 邏輯：exDate=最新除息日；payDate=當月發放日；perUnit=最近有金額一筆
+ */
+async function getNEOSData(code) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
+  let html = '';
+  try {
+    const res = await fetch(`https://neosfunds.com/${code.toLowerCase()}/`, {
+      headers: { 'User-Agent': UA }, signal: ctrl.signal
+    });
+    if (!res.ok) return null;
+    html = await res.text();
+  } catch { return null; }
+  finally { clearTimeout(timer); }
+
+  // 找到包含 Ex-Div Date 的表格段落
+  const tblIdx = html.indexOf('Ex-Div Date');
+  if (tblIdx < 0) return null;
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const currY = today.getFullYear(), currM = today.getMonth() + 1;
+  const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  rowRe.lastIndex = tblIdx;
+
+  const rows = [];
+  let m;
+  while ((m = rowRe.exec(html)) !== null) {
+    const cells = [...m[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)]
+      .map(c => c[1].replace(/<[^>]+>/g, '').trim());
+    if (cells.length < 4) continue;
+    // cols: [0]=Declaration Date, [1]=Ex-Div Date, [2]=Record Date, [3]=Payable Date, [4]=Amount
+    const exD  = parseUSDate(cells[1]);
+    const payD = parseUSDate(cells[3]);
+    const amt  = parseFloat((cells[4] || '').replace(/[$,]/g, '')) || 0;
+    if (!exD) break; // end of table
+    rows.push({ exD, payD, amt });
+  }
+  if (!rows.length) return null;
+
+  rows.sort((a, b) => a.exD - b.exD); // 升冪：oldest first
+
+  // exDate = 最近即將到來的除息日（>= 今天），若無則取最近過去的
+  const nextEx = rows.find(r => r.exD >= today) ?? rows[rows.length - 1];
+
+  // payDate = 發放日落在當月的那筆
+  const thisMonthPay = rows.find(r =>
+    r.payD && r.payD.getFullYear() === currY && r.payD.getMonth() + 1 === currM
+  ) ?? nextEx;
+
+  // perUnit = 最近有金額的一筆
+  const confirmedRows = rows.filter(r => r.amt > 0);
+  const perUnit = thisMonthPay.amt || (confirmedRows[confirmedRows.length - 1]?.amt ?? 0);
+
+  return {
+    exDate:  fmtDate(nextEx.exD),
+    payDate: thisMonthPay.payD ? fmtDate(thisMonthPay.payD) : null,
+    perUnit,
+  };
+}
+
+// ─── CLOZ 配息（官網）────────────────────────────────────────────────────────
+
+/**
+ * https://clozfund.com/
+ * 表格欄位: [Ex-Date, Record Date, Payable Date, Ordinary Income, Short-Term CG, Long-Term CG, Total Distribution]
+ * 邏輯同上
+ */
+async function getCLOZData() {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
+  let html = '';
+  try {
+    const res = await fetch('https://clozfund.com/', {
+      headers: { 'User-Agent': UA }, signal: ctrl.signal
+    });
+    if (!res.ok) return null;
+    html = await res.text();
+  } catch { return null; }
+  finally { clearTimeout(timer); }
+
+  const tblIdx = html.indexOf('Ex-Date');
+  if (tblIdx < 0) return null;
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const currY = today.getFullYear(), currM = today.getMonth() + 1;
+  const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  rowRe.lastIndex = tblIdx;
+
+  const rows = [];
+  let m;
+  while ((m = rowRe.exec(html)) !== null) {
+    const cells = [...m[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)]
+      .map(c => c[1].replace(/<[^>]+>/g, '').trim());
+    if (cells.length < 7) continue;
+    // cols: [0]=Ex-Date, [1]=Record Date, [2]=Payable Date, [6]=Total Distribution
+    const exD  = parseUSDate(cells[0]);
+    const payD = parseUSDate(cells[2]);
+    const amt  = parseFloat((cells[6] || '').replace(/[$,]/g, '')) || 0;
+    if (!exD) break;
+    rows.push({ exD, payD, amt });
+  }
+  if (!rows.length) return null;
+
+  rows.sort((a, b) => a.exD - b.exD); // 升冪
+
+  const nextEx = rows.find(r => r.exD >= today) ?? rows[rows.length - 1];
+
+  const thisMonthPay = rows.find(r =>
+    r.payD && r.payD.getFullYear() === currY && r.payD.getMonth() + 1 === currM
+  ) ?? nextEx;
+
+  const confirmedRows = rows.filter(r => r.amt > 0);
+  const perUnit = thisMonthPay.amt || (confirmedRows[confirmedRows.length - 1]?.amt ?? 0);
+
+  return {
+    exDate:  fmtDate(nextEx.exD),
+    payDate: thisMonthPay.payD ? fmtDate(thisMonthPay.payD) : null,
+    perUnit,
   };
 }
 
@@ -354,23 +550,33 @@ async function scrapeAll() {
   console.log(`[scraper] 匯率 USD/TWD = ${fxRate}`);
   await sleep(3000);
 
-  // ── Phase 3b：TWSE ETFortune HTML（上市股一次撈全部）────────────────────
-  // TWSE HTML 一次請求即可取得所有上市 ETF 股利資料，比逐支查 Yahoo 更穩定
+  // ── Phase 3b：TWSE ETFortune HTML（上市非B股：0056/00878/00919）────────────
   console.log('[scraper] Phase 3b: TWSE ETFortune HTML 批次抓取...');
+  const listedStocks = CONFIG.TW_STOCKS.filter(c => !c.endsWith('B'));
   const twseDivCache = {};
-  for (const code of CONFIG.ALL_TW_STOCKS.filter(c => !CONFIG.OTC_STOCKS.includes(c))) {
+  for (const code of listedStocks) {
     const d = await getTWDividendFromTWSE(code);
     if (d) twseDivCache[code] = d;
     console.log(`[scraper]   TWSE ${code} → exDate=${d?.exDate ?? 'null'} perUnit=${d?.perUnit ?? 0}`);
   }
 
-  // ── Phase 4：台股股利（TWSE HTML 優先，Yahoo 補 OTC，2s 間隔）────────────
-  console.log('[scraper] Phase 4: 台股股利...');
+  // ── Phase 4：台股 B 後綴 ETF 股利（MoneyDJ 官網，含 OTC）────────────────
+  console.log('[scraper] Phase 4a: MoneyDJ B 後綴 ETF...');
+  const bSuffixStocks = CONFIG.ALL_TW_STOCKS.filter(c => c.endsWith('B'));
+  const moneyDJCache = {};
+  for (const code of bSuffixStocks) {
+    const d = await getMoneyDJDividend(code);
+    if (d) moneyDJCache[code] = d;
+    console.log(`[scraper]   MoneyDJ ${code} → exDate=${d?.exDate ?? 'null'} payDate=${d?.payDate ?? 'null'} perUnit=${d?.perUnit ?? 0}`);
+    await sleep(1500);
+  }
+
+  // ── Phase 4b：所有台股寫入 cache ────────────────────────────────────────
+  console.log('[scraper] Phase 4b: 台股 cache 整合...');
   for (const code of CONFIG.ALL_TW_STOCKS) {
     try {
-      // 上市股：優先用 TWSE HTML（已批次抓），再嘗試 Yahoo
-      // OTC 股：只走 Yahoo Finance（.TWO suffix）
-      let divInfo = twseDivCache[code] ?? null;
+      // 取得該股股利（優先順序：TWSE HTML > MoneyDJ > Yahoo Finance）
+      let divInfo = twseDivCache[code] ?? moneyDJCache[code] ?? null;
       if (!divInfo) {
         divInfo = await getTWDividend(code);
         await sleep(2000);
@@ -388,11 +594,23 @@ async function scrapeAll() {
     }
   }
 
-  // ── Phase 5：美股（Yahoo，2s 間隔）─────────────────────────────────────────
+  // ── Phase 5：美股（NEOS/CLOZ 官網優先，Yahoo 補股價）─────────────────────
   console.log('[scraper] Phase 5: 美股...');
   for (const code of CONFIG.US_STOCKS) {
     try {
-      const { priceUSD, perUnit, exDate, payDate } = await getUSData(code);
+      // 先從官網取股利（含準確 payDate）
+      let divInfo = null;
+      if (code === 'QQQI') divInfo = await getNEOSData(code);
+      else if (code === 'CLOZ') divInfo = await getCLOZData();
+
+      // 股價從 Yahoo Finance 取
+      const usdData = await getUSData(code);
+      const priceUSD = usdData.priceUSD;
+
+      // 股利：官網優先，fallback Yahoo
+      const exDate  = divInfo?.exDate  ?? usdData.exDate;
+      const payDate = divInfo?.payDate ?? usdData.payDate;
+      const perUnit = divInfo?.perUnit ?? usdData.perUnit;
 
       cache[code] = { price: priceUSD, exDate, payDate, perUnit, isEstimated: false, currency: 'USD', fxRate, updatedAt: now.toISOString() };
       console.log(`[scraper] ${code} 價格=$${priceUSD} 除息=${exDate} 發放=${payDate} 股利=$${perUnit}`);
@@ -424,6 +642,16 @@ function parseYMD(s) {
   const m = String(s).match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
   if (!m) return null;
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/** 解析美式日期 MM/DD/YYYY → Date */
+function parseUSDate(s) {
+  if (!s) return null;
+  const m = String(s).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!m) return null;
+  const d = new Date(Number(m[3]), Number(m[1]) - 1, Number(m[2]));
   d.setHours(0, 0, 0, 0);
   return d;
 }
