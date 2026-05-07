@@ -1,0 +1,18 @@
+{
+  "name": "stock-tracking",
+  "version": "1.0.0",
+  "description": "股利追蹤系統 — 本地版，每日 LINE 推播",
+  "main": "run.js",
+  "scripts": {
+    "start": "node run.js",
+    "scrape": "node scraper.js",
+    "notify": "node notify.js",
+    "test": "node run.js --dry-run"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
