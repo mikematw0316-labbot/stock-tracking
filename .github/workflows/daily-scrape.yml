@@ -1,20 +1,18 @@
-name: Daily Scrape & LINE Notify
+name: Daily Scrape
 
 on:
   schedule:
-    - cron: '0 6 * * *'   # 每天 06:00 UTC = 14:00 台灣時間
+    - cron: '0 23 * * *'   # 07:00 台灣時間
+    - cron: '0 3 * * *'    # 11:00 台灣時間
+    - cron: '0 6 * * *'    # 14:00 台灣時間
+    - cron: '0 13 * * *'   # 21:00 台灣時間
   workflow_dispatch:
-    inputs:
-      dry_run:
-        description: '不發送 LINE 推播（僅更新 cache）'
-        type: boolean
-        default: false
 
 permissions:
   contents: write
 
 jobs:
-  scrape-and-notify:
+  scrape:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +27,9 @@ jobs:
         run: npm ci
 
       - name: Scrape prices & dividends
+        env:
+          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
         run: node scraper.js
 
       - name: Commit updated cache
@@ -38,11 +39,3 @@ jobs:
           git add data/cache.json
           git diff --staged --quiet || git commit -m "chore: update price cache $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push
-
-      - name: Send LINE notifications
-        continue-on-error: true   # 推播未設定時不影響 cache 寫入
-        env:
-          LINE_ACCESS_TOKEN: ${{ secrets.LINE_ACCESS_TOKEN }}
-          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
-          SHEET_ID: ${{ secrets.SHEET_ID }}
-        run: node notify.js ${{ (github.event.inputs.dry_run == 'true') && '--dry-run' || '' }}
