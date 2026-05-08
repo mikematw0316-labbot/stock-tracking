@@ -8,7 +8,7 @@ const CONFIG = {
   // 美股 ETF
   US_STOCKS: ['QQQI', 'CLOZ'],
   // 月配 ETF（需每月展延預估）
-  MONTHLY_ETFS: ['00953B', '00937B', '00933B', '00687B', 'QQQI', 'CLOZ'],
+  MONTHLY_ETFS: ['00953B', '00937B', '00933B', 'QQQI', 'CLOZ'],
 
   get ALL_TW_STOCKS() {
     return [...this.TW_STOCKS, ...this.OTC_STOCKS];
