@@ -156,7 +156,7 @@ body::before{
     background:var(--indigo-d);border:1px solid var(--indigo-b);border-radius:11px;">
     <i data-lucide="info" style="width:14px;height:14px;color:var(--indigo);flex-shrink:0;margin-top:1px;"></i>
     <p style="font-size:12px;color:#a5b4fc;line-height:1.65;">
-      請輸入持有數量與平均成本。若無持有，保留空白即可。
+      點下方「＋」新增追蹤標的，輸入張數與成本後按分析。
     </p>
   </div>
 
@@ -214,7 +214,7 @@ body::before{
 
 <script>
 /* ── Config ── */
-const codes       = ["0056","00878","00919","00953B","00937B","00933B","QQQI","CLOZ"];
+const codes       = ["0050","0056","00878","00919","00953B","00937B","00933B","QQQI","CLOZ"];
 const usStocks    = ["QQQI","CLOZ"];
 const monthlyETFs = ["00953B","00937B","00933B","QQQI","CLOZ"];
 const BOARD_LOT   = 1000;
@@ -328,50 +328,114 @@ async function loginWithId() {
 }
 
 
-/* ── 顯示持倉表單 ── */
+/* ── 持倉表單 ── */
+let activeTracked = new Set();
+
 function showPortfolioForm() {
+  activeTracked = new Set(codes.filter(c => portfolio[c] && Number(portfolio[c].lots) > 0));
+  renderPortfolioForm();
   showPage('pageHome');
+}
+
+function renderPortfolioForm() {
   const box = document.getElementById('stockInputs');
   box.innerHTML = '';
-  codes.forEach(code => {
+
+  // 已追蹤的股票 card
+  [...activeTracked].forEach(code => {
     const isUS = usStocks.includes(code);
-    const h    = portfolio[code] || {};
+    const h = portfolio[code] || {};
     const wrap = document.createElement('div');
     wrap.className = 'card';
+    wrap.id = 'card_' + code;
     wrap.style.cssText = 'padding:16px;';
     wrap.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
         <span style="font-size:19px;font-weight:800;color:var(--tx);letter-spacing:-.3px;">${code}</span>
-        <span class="badge" style="background:${isUS?'rgba(99,102,241,0.14)':'rgba(255,255,255,0.05)'};color:${isUS?'#818cf8':'var(--tx3)'};">
-          ${isUS?'🇺🇸 美股':'🇹🇼 台股'}
-        </span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="badge" style="background:${isUS?'rgba(99,102,241,0.14)':'rgba(255,255,255,0.05)'};color:${isUS?'#818cf8':'var(--tx3)'};">
+            ${isUS?'🇺🇸 美股':'🇹🇼 台股'}
+          </span>
+          <button onclick="removeStock('${code}')" style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--tx3);cursor:pointer;">
+            <i data-lucide="x" style="width:12px;height:12px;"></i>
+          </button>
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
         <div>
           <label class="lbl">持有${isUS?'股數':'張數'}</label>
           <input id="lots_${code}" class="inp" type="number" placeholder="0"
-            value="${h.lots ?? ''}" style="height:48px;font-size:15px;">
+            value="${h.lots || ''}" style="height:48px;font-size:15px;">
         </div>
         <div>
           <label class="lbl">平均成本</label>
           <input id="cost_${code}" class="inp" type="number" placeholder="0.0"
-            value="${h.cost ?? ''}" style="height:48px;font-size:15px;">
+            value="${h.cost || ''}" style="height:48px;font-size:15px;">
         </div>
       </div>`;
     box.appendChild(wrap);
   });
+
+  // 未追蹤的股票 — 可新增的 pills
+  const untracked = codes.filter(c => !activeTracked.has(c));
+  if (untracked.length > 0) {
+    const addSec = document.createElement('div');
+    addSec.id = 'add-section';
+    addSec.style.cssText = 'margin-top:8px;padding-bottom:90px;';
+    addSec.innerHTML = `
+      <div class="lbl" style="margin-bottom:10px;">新增追蹤</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        ${untracked.map(c => `
+          <button onclick="addStock('${c}')" style="
+            display:inline-flex;align-items:center;gap:5px;
+            padding:7px 13px;border-radius:99px;cursor:pointer;
+            background:var(--surf2);border:1px solid var(--border);
+            color:var(--tx2);font-size:13px;font-weight:600;">
+            <i data-lucide="plus" style="width:12px;height:12px;"></i>${c}
+          </button>`).join('')}
+      </div>`;
+    box.appendChild(addSec);
+  } else {
+    // 全部都追蹤了，加個底部空間
+    const spacer = document.createElement('div');
+    spacer.style.height = '90px';
+    box.appendChild(spacer);
+  }
+
   lucide.createIcons();
+}
+
+function addStock(code) {
+  saveCurrentInputs();
+  activeTracked.add(code);
+  renderPortfolioForm();
+}
+
+function removeStock(code) {
+  saveCurrentInputs();
+  activeTracked.delete(code);
+  if (portfolio[code]) portfolio[code] = { lots: 0, cost: 0 };
+  renderPortfolioForm();
+}
+
+function saveCurrentInputs() {
+  activeTracked.forEach(c => {
+    const lotsEl = document.getElementById('lots_' + c);
+    const costEl = document.getElementById('cost_' + c);
+    if (lotsEl) portfolio[c] = {
+      lots: Number(lotsEl.value) || 0,
+      cost: Number(costEl?.value) || 0,
+    };
+  });
 }
 
 /* ── 送出計算 ── */
 function submitAndCompute() {
   if (!globalCache) { alert('股價資料尚未載入，請稍後再試。'); return; }
-  codes.forEach(c => {
-    portfolio[c] = {
-      lots: Number(document.getElementById('lots_'+c).value) || 0,
-      cost: Number(document.getElementById('cost_'+c).value) || 0,
-    };
-  });
+  if (activeTracked.size === 0) { alert('請先新增追蹤的股票。'); return; }
+  saveCurrentInputs();
+  // 未追蹤的全部清零
+  codes.forEach(c => { if (!activeTracked.has(c)) portfolio[c] = { lots: 0, cost: 0 }; });
   saveLocal();
   if (currentUser) saveToSheets(currentUser, portfolio);
   showLoading('計算中...');
