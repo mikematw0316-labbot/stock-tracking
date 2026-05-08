@@ -2,9 +2,9 @@
 
 const CONFIG = {
   // 台股 ETF（上市 TSE）
-  TW_STOCKS: ['0050', '0056', '00878', '00919', '00953B', '00687B'],
+  TW_STOCKS: ['0050', '0056', '00878', '00919', '00953B'],
   // 台股 ETF（上櫃 TPEX）— Yahoo Finance 用 .TWO suffix
-  OTC_STOCKS: ['00937B', '00933B'],
+  OTC_STOCKS: ['00937B', '00933B', '00687B'],
   // 美股 ETF
   US_STOCKS: ['QQQI', 'CLOZ'],
   // 月配 ETF（需每月展延預估）
