@@ -6,7 +6,7 @@
     "perUnit": 1,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-13T06:23:55.925Z"
+    "updatedAt": "2026-05-13T08:38:31.485Z"
   },
   "0056": {
     "price": 45.15,
@@ -15,7 +15,7 @@
     "perUnit": 1,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-13T06:23:55.925Z"
+    "updatedAt": "2026-05-13T08:38:31.485Z"
   },
   "00878": {
     "price": 27.95,
@@ -24,7 +24,7 @@
     "perUnit": 0.42,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-13T06:23:55.925Z"
+    "updatedAt": "2026-05-13T08:38:31.485Z"
   },
   "00919": {
     "price": 25.55,
@@ -33,7 +33,7 @@
     "perUnit": 0.78,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-13T06:23:55.925Z"
+    "updatedAt": "2026-05-13T08:38:31.485Z"
   },
   "00953B": {
     "price": 9.56,
@@ -42,7 +42,7 @@
     "perUnit": 0.061,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-13T06:23:55.925Z"
+    "updatedAt": "2026-05-13T08:38:31.485Z"
   },
   "00937B": {
     "price": 14.8,
@@ -51,7 +51,7 @@
     "perUnit": 0.072,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-13T06:23:55.925Z"
+    "updatedAt": "2026-05-13T08:38:31.485Z"
   },
   "00933B": {
     "price": 15.99,
@@ -60,7 +60,7 @@
     "perUnit": 0.072,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-13T06:23:55.925Z"
+    "updatedAt": "2026-05-13T08:38:31.485Z"
   },
   "00687B": {
     "price": 27.64,
@@ -69,7 +69,7 @@
     "perUnit": 0.28,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-13T06:23:55.925Z"
+    "updatedAt": "2026-05-13T08:38:31.485Z"
   },
   "QQQI": {
     "price": 56.32,
@@ -78,8 +78,8 @@
     "perUnit": 0.6297,
     "isEstimated": false,
     "currency": "USD",
-    "fxRate": 31.497,
-    "updatedAt": "2026-05-13T06:23:55.925Z"
+    "fxRate": 31.52,
+    "updatedAt": "2026-05-13T08:38:31.485Z"
   },
   "CLOZ": {
     "price": 26.4,
@@ -88,7 +88,7 @@
     "perUnit": 0.14325,
     "isEstimated": false,
     "currency": "USD",
-    "fxRate": 31.497,
-    "updatedAt": "2026-05-13T06:23:55.925Z"
+    "fxRate": 31.52,
+    "updatedAt": "2026-05-13T08:38:31.485Z"
   }
 }
