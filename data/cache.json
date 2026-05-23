@@ -1,94 +1,94 @@
 {
   "0050": {
-    "price": 97.3,
+    "price": null,
     "exDate": "2026/01/22",
-    "payDate": "2026/02/11",
+    "payDate": "2026/02/05",
     "perUnit": 1,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-22T15:45:02.901Z"
+    "updatedAt": "2026-05-23T00:08:40.982Z"
   },
   "0056": {
-    "price": 46.35,
+    "price": null,
     "exDate": "2026/04/23",
-    "payDate": "2026/05/14",
+    "payDate": "2026/05/07",
     "perUnit": 1,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-22T15:45:02.901Z"
+    "updatedAt": "2026-05-23T00:08:40.982Z"
   },
   "00878": {
-    "price": 28.27,
-    "exDate": "2027/09/18",
-    "payDate": "2026/03/23",
-    "perUnit": 0.42,
+    "price": null,
+    "exDate": "2026/05/19",
+    "payDate": "2026/06/02",
+    "perUnit": 0.66,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-22T15:45:02.901Z"
+    "updatedAt": "2026-05-23T00:08:40.982Z"
   },
   "00919": {
-    "price": 26.73,
+    "price": null,
     "exDate": "2026/03/17",
-    "payDate": "2026/04/14",
+    "payDate": "2026/03/31",
     "perUnit": 0.78,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-22T15:45:02.901Z"
+    "updatedAt": "2026-05-23T00:08:40.982Z"
   },
   "00953B": {
-    "price": 9.59,
+    "price": null,
     "exDate": "2026/06/02",
     "payDate": "2026/05/29",
     "perUnit": 0.061,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-22T15:45:02.901Z"
+    "updatedAt": "2026-05-23T00:08:40.982Z"
   },
   "00937B": {
-    "price": 14.68,
+    "price": null,
     "exDate": "2026/05/19",
     "payDate": "2026/05/15",
     "perUnit": 0.072,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-22T15:45:02.901Z"
+    "updatedAt": "2026-05-23T00:08:40.982Z"
   },
   "00933B": {
-    "price": 15.82,
+    "price": null,
     "exDate": "2026/05/19",
     "payDate": "2026/05/15",
     "perUnit": 0.072,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-22T15:45:02.901Z"
+    "updatedAt": "2026-05-23T00:08:40.982Z"
   },
   "00687B": {
-    "price": 27.38,
+    "price": null,
     "exDate": "2026/03/17",
     "payDate": "2026/04/14",
     "perUnit": 0.28,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-05-22T15:45:02.901Z"
+    "updatedAt": "2026-05-23T00:08:40.982Z"
   },
   "QQQI": {
-    "price": 56.44,
+    "price": 56.3,
     "exDate": "2026/06/16",
     "payDate": "2026/05/22",
     "perUnit": 0.6589,
     "isEstimated": false,
     "currency": "USD",
-    "fxRate": 31.447,
-    "updatedAt": "2026-05-22T15:45:02.901Z"
+    "fxRate": 31.449,
+    "updatedAt": "2026-05-23T00:08:40.982Z"
   },
   "CLOZ": {
-    "price": 26.46,
+    "price": 26.48,
     "exDate": "2026/05/04",
     "payDate": "2026/05/08",
     "perUnit": 0.14325,
     "isEstimated": false,
     "currency": "USD",
-    "fxRate": 31.447,
-    "updatedAt": "2026-05-22T15:45:02.901Z"
+    "fxRate": 31.449,
+    "updatedAt": "2026-05-23T00:08:40.982Z"
   }
 }
