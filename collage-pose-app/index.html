@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SnapPose Studio — 照片拼貼 × Pose 指導</title>
+<meta name="description" content="照片拼貼與拍照姿勢指導的一站式網頁工具。多款拼貼版型、Pose 取景相機與拍照技巧。">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ───────── 頂部導覽 ───────── -->
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-logo">📸</span>
+    <span class="brand-name">SnapPose <em>Studio</em></span>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="collage" role="tab">🧩 照片拼貼</button>
+    <button class="tab" data-tab="pose" role="tab">🕺 Pose 圖庫</button>
+    <button class="tab" data-tab="camera" role="tab">🎥 Pose 相機</button>
+    <button class="tab" data-tab="tips" role="tab">💡 拍照技巧</button>
+  </nav>
+  <div class="topbar-right">
+    <span id="sub-badge" class="sub-badge free">免費版</span>
+    <button id="btn-upgrade" class="btn btn-gold">⭐ 升級 Premium</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ───────── 分頁：照片拼貼 ───────── -->
+<section id="panel-collage" class="panel active">
+  <aside class="sidebar">
+    <h2>版型</h2>
+    <p class="hint">點選版型後，點空格上傳照片；拖曳可調整位置、滾輪縮放。</p>
+    <div id="template-list" class="template-list"></div>
+
+    <h2>畫布設定</h2>
+    <div class="control-group">
+      <label>比例
+        <select id="ctl-aspect">
+          <option value="1">1 : 1（正方形）</option>
+          <option value="0.8">4 : 5（IG 直式）</option>
+          <option value="0.5625">9 : 16（限時動態）</option>
+          <option value="1.7778">16 : 9（橫式）</option>
+        </select>
+      </label>
+      <label>間距 <input type="range" id="ctl-gap" min="0" max="40" value="8"></label>
+      <label>圓角 <input type="range" id="ctl-radius" min="0" max="60" value="12"></label>
+      <label>背景色 <input type="color" id="ctl-bg" value="#ffffff"></label>
+    </div>
+
+    <h2>批次上傳</h2>
+    <button id="btn-batch" class="btn btn-block">📂 一次選多張照片</button>
+    <input type="file" id="batch-input" accept="image/*" multiple hidden>
+
+    <button id="btn-export" class="btn btn-primary btn-block">⬇️ 匯出 PNG（1080px）</button>
+  </aside>
+
+  <div class="stage-wrap">
+    <div id="collage-stage" class="collage-stage"></div>
+    <div id="cell-toolbar" class="cell-toolbar" hidden>
+      <label>縮放 <input type="range" id="cell-zoom" min="100" max="300" value="100"></label>
+      <button id="cell-replace" class="btn btn-sm">替換</button>
+      <button id="cell-remove" class="btn btn-sm btn-danger">移除</button>
+    </div>
+  </div>
+  <input type="file" id="cell-input" accept="image/*" hidden>
+</section>
+
+<!-- ───────── 分頁：Pose 圖庫 ───────── -->
+<section id="panel-pose" class="panel">
+  <div class="pose-header">
+    <h2>拍照姿勢圖庫</h2>
+    <div id="pose-cats" class="chip-row"></div>
+  </div>
+  <div id="pose-grid" class="pose-grid"></div>
+</section>
+
+<!-- ───────── 分頁：Pose 相機 ───────── -->
+<section id="panel-camera" class="panel">
+  <div class="camera-layout">
+    <div class="camera-stage">
+      <video id="cam-video" autoplay playsinline muted></video>
+      <svg id="cam-overlay" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
+      <div id="cam-placeholder" class="cam-placeholder">
+        <p>📷 點「開啟相機」開始，<br>並從右側選擇一個 Pose 疊加取景。</p>
+      </div>
+      <div id="cam-countdown" class="cam-countdown" hidden></div>
+    </div>
+    <aside class="camera-side">
+      <button id="btn-cam-start" class="btn btn-primary btn-block">開啟相機</button>
+      <button id="btn-cam-flip" class="btn btn-block" disabled>🔄 切換前後鏡頭</button>
+      <label class="ctl">輪廓透明度 <input type="range" id="cam-opacity" min="10" max="100" value="55"></label>
+      <label class="ctl"><input type="checkbox" id="cam-mirror" checked> 鏡像畫面</label>
+      <label class="ctl"><input type="checkbox" id="cam-timer"> 3 秒倒數</label>
+      <button id="btn-capture" class="btn btn-gold btn-block" disabled>📸 拍照</button>
+      <div id="cam-pose-name" class="cam-pose-name">尚未選擇 Pose</div>
+      <h3>快速選 Pose</h3>
+      <div id="cam-pose-list" class="cam-pose-list"></div>
+      <div id="shot-preview" class="shot-preview" hidden>
+        <img id="shot-img" alt="拍攝結果">
+        <a id="shot-download" class="btn btn-sm btn-primary" download="snappose.png">下載照片</a>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ───────── 分頁：拍照技巧 ───────── -->
+<section id="panel-tips" class="panel">
+  <h2>拍照技巧</h2>
+  <div id="tips-list" class="tips-list"></div>
+</section>
+
+</main>
+
+<!-- ───────── Pose 詳情彈窗 ───────── -->
+<div id="pose-modal" class="modal" hidden>
+  <div class="modal-box pose-detail">
+    <button class="modal-close" data-close>✕</button>
+    <div class="pose-detail-fig"><svg id="pose-detail-svg" viewBox="0 0 100 100"></svg></div>
+    <div class="pose-detail-info">
+      <h3 id="pose-detail-name"></h3>
+      <p id="pose-detail-cat" class="muted"></p>
+      <ul id="pose-detail-tips"></ul>
+      <button id="pose-detail-cam" class="btn btn-primary btn-block">🎥 用這個 Pose 開相機</button>
+    </div>
+  </div>
+</div>
+
+<!-- ───────── 訂閱付費彈窗 ───────── -->
+<div id="paywall-modal" class="modal" hidden>
+  <div class="modal-box paywall-box">
+    <button class="modal-close" data-close>✕</button>
+    <div class="paywall-head">
+      <div class="paywall-star">⭐</div>
+      <h3>解鎖 SnapPose Premium</h3>
+      <p class="muted">解鎖全部進階拼貼版型與專業 Pose 指導</p>
+    </div>
+    <ul class="paywall-perks">
+      <li>✅ 全部進階拼貼版型（雜誌風、馬賽克、電影感…）</li>
+      <li>✅ 全部 Premium 姿勢與專業拍攝指導</li>
+      <li>✅ 未來新版型、新 Pose 搶先用</li>
+      <li>✅ 匯出無浮水印</li>
+    </ul>
+    <div class="plan-row">
+      <button class="plan" data-plan="monthly">
+        <span class="plan-name">月費方案</span>
+        <span class="plan-price">US$3<small>/月</small></span>
+        <span class="plan-note">隨時取消</span>
+      </button>
+      <button class="plan best" data-plan="yearly">
+        <span class="plan-ribbon">最划算 省 33%</span>
+        <span class="plan-name">年費方案</span>
+        <span class="plan-price">US$2<small>/月</small></span>
+        <span class="plan-note">年繳 US$24</span>
+      </button>
+    </div>
+    <button id="btn-checkout" class="btn btn-gold btn-block" disabled>選擇方案以繼續</button>
+    <p class="paywall-fine">示範結帳流程：正式上線時可於 <code>app.js</code> 的 <code>Paywall.checkout()</code> 串接 Stripe / 藍新 / 綠界等金流。</p>
+    <button id="btn-manage-sub" class="link-btn" hidden>管理訂閱（取消）</button>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="poses.js"></script>
+<script src="templates.js"></script>
+<script src="app.js"></script>
+<script src="collage.js"></script>
+<script src="camera.js"></script>
+</body>
+</html>
