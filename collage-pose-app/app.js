@@ -208,8 +208,26 @@ function renderTips() {
   }
 }
 
+/* ───────── 測試模式 ─────────
+ * ?pro=test  → 直接開通 Premium 7 天（測試付費版用）
+ * ?pro=free  → 清除訂閱，回到免費版
+ */
+function applyTestMode() {
+  const mode = new URLSearchParams(location.search).get("pro");
+  if (mode === "test") {
+    localStorage.setItem(Paywall.KEY, JSON.stringify({
+      plan: "test", since: Date.now(), expires: Date.now() + 7 * 86400000,
+    }));
+    toast("🧪 測試模式：Premium 已開通（7 天）", 4000);
+  } else if (mode === "free") {
+    localStorage.removeItem(Paywall.KEY);
+    toast("已重設為免費版", 3000);
+  }
+}
+
 /* ───────── 初始化（collage.js / camera.js 載入後執行） ───────── */
 window.addEventListener("DOMContentLoaded", () => {
+  applyTestMode();
   renderPoseCats();
   renderTips();
   Paywall.refreshUI();
