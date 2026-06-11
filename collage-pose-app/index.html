@@ -6,6 +6,12 @@
 <title>SnapPose Studio — 照片拼貼 × Pose 指導</title>
 <meta name="description" content="照片拼貼與拍照姿勢指導的一站式網頁工具。多款拼貼版型、Pose 取景相機與拍照技巧。">
 <link rel="stylesheet" href="style.css">
+<script>
+// 相機需要 HTTPS：若以 http 開啟（非本機），自動跳轉到 https
+if (location.protocol === "http:" && !["localhost", "127.0.0.1"].includes(location.hostname)) {
+  location.replace("https://" + location.host + location.pathname + location.search);
+}
+</script>
 </head>
 <body>
 

@@ -7,15 +7,41 @@ const Camera = {
 
   async start() {
     this.stop();
+
+    if (!window.isSecureContext) {
+      toast("⚠️ 相機需要 HTTPS 安全連線，請改用 https:// 開頭的網址開啟", 5000);
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast("⚠️ 此瀏覽器不支援相機。若在 LINE / Telegram / FB 內開啟，請點「用 Safari / Chrome 開啟」", 6000);
+      return;
+    }
+
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: this.facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: false,
       });
     } catch (err) {
-      toast("無法開啟相機：請確認瀏覽器權限（需 HTTPS 或 localhost）");
       console.error(err);
-      return;
+      // 指定鏡頭/解析度失敗時，降級用預設相機再試一次
+      if (err.name === "OverconstrainedError" || err.name === "NotFoundError" || err.name === "NotReadableError") {
+        try {
+          this.stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        } catch (err2) {
+          console.error(err2);
+        }
+      }
+      if (!this.stream) {
+        if (err.name === "NotAllowedError") {
+          toast("⚠️ 相機權限被拒絕：請到瀏覽器設定（網站設定 → 相機）改為允許後重新整理", 6000);
+        } else if (err.name === "NotFoundError") {
+          toast("⚠️ 找不到相機裝置", 5000);
+        } else {
+          toast("⚠️ 無法開啟相機：" + err.name, 5000);
+        }
+        return;
+      }
     }
     const video = $("#cam-video");
     video.srcObject = this.stream;
