@@ -119,6 +119,7 @@ main { flex: 1; overflow: hidden; display: flex; }
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px;
   font-size: 13px; color: var(--muted);
 }
+.cell-toolbar[hidden] { display: none; }
 .cell-toolbar input[type=range] { accent-color: var(--accent); }
 
 /* ── Pose 圖庫 ── */
@@ -166,6 +167,7 @@ main { flex: 1; overflow: hidden; display: flex; }
 .camera-side { width: 300px; min-width: 300px; padding: 16px; background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; }
 .camera-side h3 { font-size: 14px; color: var(--muted); margin: 18px 0 8px; }
 .camera-side .ctl { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); margin: 10px 0; }
+.camera-side .ctl:has(input[type=checkbox]) { justify-content: flex-start; }
 .camera-side input[type=range] { width: 130px; accent-color: var(--accent); }
 .cam-pose-name { margin-top: 10px; font-size: 13px; color: var(--gold); text-align: center; }
 .cam-pose-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -235,13 +237,62 @@ main { flex: 1; overflow: hidden; display: flex; }
   padding: 10px 22px; font-size: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.5);
 }
 
-/* ── RWD ── */
+/* ── RWD：手機版（App 式底部導覽） ── */
 @media (max-width: 860px) {
+  /* 頂欄只留品牌與訂閱狀態，單行不換行 */
+  .topbar { padding: 8px 12px; gap: 8px; flex-wrap: nowrap; }
+  .brand { font-size: 16px; flex: 1; min-width: 0; }
+  .topbar-right { gap: 6px; flex-shrink: 0; }
+  #btn-upgrade { padding: 6px 10px; font-size: 12px; white-space: nowrap; }
+  .sub-badge { font-size: 11px; padding: 3px 8px; white-space: nowrap; }
+
+  /* 分頁移到底部，固定導覽列（避開 iPhone 安全區） */
+  .tabs {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+    background: var(--panel); border-top: 1px solid var(--line);
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+    gap: 4px; flex-wrap: nowrap;
+  }
+  .tab {
+    flex: 1; padding: 9px 2px; font-size: 12px;
+    text-align: center; white-space: nowrap; overflow: hidden;
+  }
+  .tab.active { box-shadow: inset 0 2px 0 var(--accent); }
+
+  /* 滾動內容底部預留導覽列高度 */
+  .sidebar, .camera-side, #panel-pose.active, #panel-tips.active {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+
+  /* 拼貼頁：畫布在上、控制項在下，版型改橫向滑動 */
   #panel-collage.active { flex-direction: column; }
-  .sidebar { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid var(--line); max-height: 45vh; }
+  .stage-wrap { order: -1; flex: none; height: 48vh; padding: 10px 10px 0; }
+  .cell-toolbar { margin-top: 8px; padding: 6px 10px; max-width: 100%; }
+  .cell-toolbar input[type=range] { width: 110px; }
+  .sidebar {
+    width: 100%; min-width: 0; flex: 1;
+    border-right: none; border-top: 1px solid var(--line);
+  }
+  .template-list { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 6px; }
+  .template-thumb { flex: 0 0 62px; width: 62px; height: 62px; }
+
+  /* Pose 圖庫：兩欄 */
+  #panel-pose.active, #panel-tips.active { padding: 14px; }
+  .pose-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+
+  /* 相機：畫面在上、控制在下 */
   .camera-layout { flex-direction: column; }
-  .camera-side { width: 100%; min-width: 0; border-left: none; border-top: 1px solid var(--line); }
-  .camera-stage { min-height: 50vh; }
+  .camera-stage { flex: none; height: 46vh; min-height: 320px; }
+  .camera-side { width: 100%; min-width: 0; flex: 1; border-left: none; border-top: 1px solid var(--line); }
+
+  /* 彈窗與提示 */
   .pose-detail { flex-direction: column; }
   .pose-detail-fig { width: 100%; }
+  .modal { padding: 12px; align-items: flex-end; }
+  .modal-box { border-radius: 16px 16px 0 0; max-height: 82vh; }
+  .toast { bottom: calc(86px + env(safe-area-inset-bottom)); max-width: 90vw; text-align: center; }
+}
+@media (max-width: 380px) {
+  .plan-row { flex-direction: column; }
+  .plan-ribbon { top: 50%; left: auto; right: 8px; transform: translateY(-50%); }
 }
