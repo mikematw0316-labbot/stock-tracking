@@ -63,6 +63,7 @@ $$(".tab").forEach((btn) => {
 function switchTab(name) {
   $(`.tab[data-tab="${name}"]`).click();
 }
+$("#pose-banner").addEventListener("click", () => switchTab("camera"));
 
 /* ───────── 付費牆 ─────────
  * 訂閱狀態存在 localStorage（示範用）。
@@ -168,7 +169,7 @@ function makePoseCard(pose, small = false) {
   const NS = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(NS, "svg");
   svg.setAttribute("viewBox", "0 0 100 100");
-  renderPose(svg, pose);
+  renderPose(svg, pose, "fill");
   card.appendChild(svg);
   const name = document.createElement("div");
   name.className = "pose-name";
@@ -220,7 +221,7 @@ function renderPoseGrid() {
 
 function openPoseDetail(pose) {
   detailPose = pose;
-  renderPose($("#pose-detail-svg"), pose);
+  renderPose($("#pose-detail-svg"), pose, "fill");
   $("#pose-detail-name").textContent = pose.name;
   $("#pose-detail-cat").textContent = `分類：${pose.cat}${pose.premium ? "・⭐ Premium" : ""}`;
   const ul = $("#pose-detail-tips");

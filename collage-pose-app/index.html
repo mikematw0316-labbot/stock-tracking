@@ -37,6 +37,11 @@ if (location.protocol === "http:" && !["localhost", "127.0.0.1"].includes(locati
   <div class="stage-wrap">
     <div id="collage-stage" class="collage-stage"></div>
     <div id="empty-cta" class="empty-cta">
+      <div class="hero-stack" aria-hidden="true">
+        <img src="https://picsum.photos/seed/hero-a/300/380" alt="">
+        <img src="https://picsum.photos/seed/hero-b/300/380" alt="">
+        <img src="https://picsum.photos/seed/hero-c/300/380" alt="">
+      </div>
       <h3 class="cta-title">把回憶，拼成一張作品</h3>
       <button class="btn btn-primary">選擇照片開始 →</button>
       <p>或先從下方「版型」挑個喜歡的排版</p>
@@ -110,8 +115,14 @@ if (location.protocol === "http:" && !["localhost", "127.0.0.1"].includes(locati
 
 <!-- ───────── 分頁：Pose 圖庫 ───────── -->
 <section id="panel-pose" class="panel">
+  <div class="pose-banner" id="pose-banner">
+    <div class="pose-banner-text">
+      <h2>今天，換個姿勢拍</h2>
+      <p>挑一個 Pose，疊在相機畫面上照著擺 →</p>
+    </div>
+    <img src="https://picsum.photos/seed/posebanner/360/260" alt="">
+  </div>
   <div class="pose-header">
-    <h2>姿勢圖庫</h2>
     <div id="pose-cats" class="chip-row"></div>
   </div>
   <div id="pose-grid" class="pose-grid"></div>

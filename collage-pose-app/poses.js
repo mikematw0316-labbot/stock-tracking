@@ -196,33 +196,76 @@ const POSES = [
   },
 ];
 
-/* 把 pose 畫進指定的 <svg>（viewBox 0 0 100 100） */
-function renderPose(svgEl, pose) {
+/* 把 pose 畫進指定的 <svg>（viewBox 0 0 100 100）
+ * mode = "line"：白色輪廓線（相機取景疊加用）
+ * mode = "fill"：插畫風人物（圖庫卡片用：有身體、髮型、膚色的扁平插畫）
+ */
+function renderPose(svgEl, pose, mode = "line") {
   const NS = "http://www.w3.org/2000/svg";
   svgEl.innerHTML = "";
+
+  const PALETTES = [
+    { cloth: "#3a3024", skin: "#ecb893", hair: "#211a12" },
+    { cloth: "#cf6a4d", skin: "#f2c4a2", hair: "#7c3b28" },
+  ];
+
   pose.figures.forEach((f, i) => {
     const g = document.createElementNS(NS, "g");
     if (i === 1) g.setAttribute("class", "pose-figure-b");
 
-    const head = document.createElementNS(NS, "circle");
-    head.setAttribute("cx", f.head[0]);
-    head.setAttribute("cy", f.head[1]);
-    head.setAttribute("r", 5.5);
-    head.setAttribute("class", "pose-figure-head");
-    g.appendChild(head);
+    if (mode === "fill") {
+      const pal = PALETTES[i % 2];
+      const line = (pts, w, color) => {
+        const pl = document.createElementNS(NS, "polyline");
+        pl.setAttribute("points", pts.map((p) => p.join(",")).join(" "));
+        pl.setAttribute("fill", "none");
+        pl.setAttribute("stroke", color);
+        pl.setAttribute("stroke-width", w);
+        pl.setAttribute("stroke-linecap", "round");
+        pl.setAttribute("stroke-linejoin", "round");
+        g.appendChild(pl);
+      };
+      const dot = (p, r, color) => {
+        const c = document.createElementNS(NS, "circle");
+        c.setAttribute("cx", p[0]);
+        c.setAttribute("cy", p[1]);
+        c.setAttribute("r", r);
+        c.setAttribute("fill", color);
+        g.appendChild(c);
+      };
+      // 腿（最底層）→ 軀幹 → 手臂，營造前後層次
+      line([f.hip, ...f.legL], 6.5, pal.cloth);
+      line([f.hip, ...f.legR], 6.5, pal.cloth);
+      line([f.neck, f.hip], 12, pal.cloth);
+      line([f.neck, ...f.armL], 5.2, pal.cloth);
+      line([f.neck, ...f.armR], 5.2, pal.cloth);
+      // 手掌膚色點
+      dot(f.armL[1], 2.7, pal.skin);
+      dot(f.armR[1], 2.7, pal.skin);
+      // 頭：髮在後、臉在前
+      dot([f.head[0], f.head[1] - 1.1], 6.4, pal.hair);
+      dot([f.head[0], f.head[1] + 1.2], 5.1, pal.skin);
+    } else {
+      const head = document.createElementNS(NS, "circle");
+      head.setAttribute("cx", f.head[0]);
+      head.setAttribute("cy", f.head[1]);
+      head.setAttribute("r", 5.5);
+      head.setAttribute("class", "pose-figure-head");
+      g.appendChild(head);
 
-    const lines = [
-      [f.neck, f.hip],
-      [f.neck, f.armL[0], f.armL[1]],
-      [f.neck, f.armR[0], f.armR[1]],
-      [f.hip, f.legL[0], f.legL[1]],
-      [f.hip, f.legR[0], f.legR[1]],
-    ];
-    for (const pts of lines) {
-      const pl = document.createElementNS(NS, "polyline");
-      pl.setAttribute("points", pts.map((p) => p.join(",")).join(" "));
-      pl.setAttribute("class", "pose-figure-stroke");
-      g.appendChild(pl);
+      const lines = [
+        [f.neck, f.hip],
+        [f.neck, f.armL[0], f.armL[1]],
+        [f.neck, f.armR[0], f.armR[1]],
+        [f.hip, f.legL[0], f.legL[1]],
+        [f.hip, f.legR[0], f.legR[1]],
+      ];
+      for (const pts of lines) {
+        const pl = document.createElementNS(NS, "polyline");
+        pl.setAttribute("points", pts.map((p) => p.join(",")).join(" "));
+        pl.setAttribute("class", "pose-figure-stroke");
+        g.appendChild(pl);
+      }
     }
     svgEl.appendChild(g);
   });

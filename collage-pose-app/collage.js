@@ -302,7 +302,7 @@ function roundRectPath(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-/* ── 版型清單（含付費鎖） ── */
+/* ── 版型清單（含付費鎖）：縮圖以真實照片填充，呈現成品感 ── */
 const THUMB_PALETTE = ["#e9c4a8", "#cdd9c3", "#ddd0ea", "#f2dfba", "#c5d6e8", "#eccdd3"];
 
 function renderTemplateList() {
@@ -325,7 +325,12 @@ function renderTemplateList() {
       cell.style.top = 7 + c.y * 86 + "%";
       cell.style.width = c.w * 86 - 3 + "%";
       cell.style.height = c.h * 86 - 3 + "%";
-      cell.style.background = THUMB_PALETTE[ci % THUMB_PALETTE.length];
+      cell.style.background = THUMB_PALETTE[ci % THUMB_PALETTE.length]; // 圖片載入前的底色
+      const im = document.createElement("img");
+      im.src = `https://picsum.photos/seed/snap-${t.id}-${ci}/140/140`;
+      im.loading = "lazy";
+      im.alt = "";
+      cell.appendChild(im);
       thumb.appendChild(cell);
     });
     if (t.premium) {
