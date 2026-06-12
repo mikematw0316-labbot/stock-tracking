@@ -22,6 +22,29 @@ async function shareOrDownload(blob, filename) {
   a.click();
 }
 
+/* 多張圖（輪播）：優先一次分享多檔，不支援則依序下載 */
+async function shareOrDownloadMany(blobs, baseName) {
+  const files = blobs.map((b, i) => new File([b], `${baseName}-${i + 1}.png`, { type: "image/png" }));
+  if (navigator.canShare?.({ files })) {
+    try {
+      await navigator.share({ files, title: "SnapPose Studio" });
+      toast(`已開啟分享面板（${files.length} 張），發 FB 時請依 1→${files.length} 順序選取`, 4500);
+      return;
+    } catch (err) {
+      if (err.name === "AbortError") return;
+      console.warn("share failed, fallback to download", err);
+    }
+  }
+  for (const f of files) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(f);
+    a.download = f.name;
+    a.click();
+    await new Promise((r) => setTimeout(r, 400)); // 避免瀏覽器擋連續下載
+  }
+  toast(`已下載 ${files.length} 張，上傳 FB 時請依檔名 1→${files.length} 順序選取`, 4500);
+}
+
 function toast(msg, ms = 2600) {
   const el = $("#toast");
   el.textContent = msg;
@@ -113,6 +136,7 @@ const Paywall = {
     badge.classList.toggle("premium", premium);
     badge.classList.toggle("free", !premium);
     $("#btn-upgrade").hidden = premium;
+    $$(".chip-lock").forEach((el) => (el.hidden = premium));
     renderTemplateList();
     renderPoseGrid();
     renderCamPoseList();

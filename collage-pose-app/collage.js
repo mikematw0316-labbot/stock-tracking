@@ -14,15 +14,40 @@ const Collage = {
   cells: [], // 與 template.cells 對應：{ img, ox, oy, zoom }（ox/oy 為相對格子尺寸的偏移比例）
   selected: -1,
   preset: FB_PRESETS["fb-square"],
-  aspect: 1, // 高/寬，由 preset 推得
+  presetId: "fb-square",
+  pages: 1, // 輪播張數（>1 時畫布為 N 倍寬的長畫布）
+  aspect: 1, // 高/寬，由 preset 與 pages 推得
   gap: 8,
   radius: 12,
   bg: "#ffffff",
 
+  /* 輪播只適用於貼文類尺寸 */
+  carouselAllowed() {
+    return this.presetId === "fb-square" || this.presetId === "fb-portrait";
+  },
+
   setPreset(id) {
+    this.presetId = id;
     this.preset = FB_PRESETS[id];
-    this.aspect = this.preset.h / this.preset.w;
-    $("#preset-hint").textContent = "匯出尺寸：" + this.preset.hint;
+    if (!this.carouselAllowed()) this.setPages(1, true);
+    this.applyGeometry();
+  },
+
+  setPages(n, silent) {
+    this.pages = n;
+    if (!silent) this.applyGeometry();
+    $$("#carousel-chips .chip").forEach((c) =>
+      c.classList.toggle("active", +c.dataset.pages === n));
+    $("#carousel-hint").hidden = n === 1;
+  },
+
+  applyGeometry() {
+    this.aspect = this.preset.h / (this.preset.w * this.pages);
+    $("#carousel-row").style.display = this.carouselAllowed() ? "" : "none";
+    const sizeTxt = this.pages > 1
+      ? `${this.pages} 張 × ${this.preset.w} × ${this.preset.h}（無縫輪播）`
+      : this.preset.hint;
+    $("#preset-hint").textContent = "匯出尺寸：" + sizeTxt;
     this.render();
   },
 
@@ -73,6 +98,22 @@ const Collage = {
       this.bindCell(el, i);
       stage.appendChild(el);
     });
+    // 輪播分頁參考線與頁碼
+    if (this.pages > 1) {
+      for (let p = 0; p < this.pages; p++) {
+        if (p > 0) {
+          const guide = document.createElement("div");
+          guide.className = "page-guide";
+          guide.style.left = (p * W) / this.pages + "px";
+          stage.appendChild(guide);
+        }
+        const num = document.createElement("div");
+        num.className = "page-num";
+        num.textContent = p + 1;
+        num.style.left = (p * W) / this.pages + 6 + "px";
+        stage.appendChild(num);
+      }
+    }
     $("#empty-cta").hidden = this.hasPhotos();
     this.select(this.selected);
   },
@@ -181,11 +222,11 @@ const Collage = {
     img.src = URL.createObjectURL(file);
   },
 
-  /* 以 FB 建議像素匯出 PNG；免費版加浮水印 */
-  export() {
+  /* 以 FB 建議像素匯出 PNG；輪播時裁成多張；免費版加浮水印 */
+  async export() {
     if (!this.hasPhotos()) { toast("先放入至少一張照片再匯出"); return; }
 
-    const W = this.preset.w, H = this.preset.h;
+    const W = this.preset.w * this.pages, H = this.preset.h;
     const k = W / parseFloat($("#collage-stage").style.width); // 顯示 px → 匯出 px
     const canvas = document.createElement("canvas");
     canvas.width = W; canvas.height = H;
@@ -215,23 +256,41 @@ const Collage = {
       ctx.restore();
     });
 
-    if (!Paywall.isPremium()) {
-      ctx.font = `${Math.round(W * 0.028)}px sans-serif`;
-      ctx.fillStyle = "rgba(255,255,255,.55)";
-      ctx.strokeStyle = "rgba(0,0,0,.35)";
-      ctx.lineWidth = 3;
-      ctx.textAlign = "right";
-      const txt = "Made with SnapPose Studio";
-      ctx.strokeText(txt, W - 24, H - 24);
-      ctx.fillText(txt, W - 24, H - 24);
-    }
+    const toBlob = (c) => new Promise((r) => c.toBlob(r, "image/png"));
 
-    canvas.toBlob((blob) => {
-      shareOrDownload(blob, "snappose-fb.png");
-      if (!Paywall.isPremium()) toast("免費版匯出含浮水印，升級 Premium 可移除", 3500);
-    }, "image/png");
+    if (this.pages === 1) {
+      drawWatermark(ctx, W, H);
+      shareOrDownload(await toBlob(canvas), "snappose-fb.png");
+    } else {
+      // 裁成 N 張：發 FB 多圖貼文時滑動無縫接續
+      const pw = this.preset.w;
+      const blobs = [];
+      for (let p = 0; p < this.pages; p++) {
+        const slice = document.createElement("canvas");
+        slice.width = pw; slice.height = H;
+        const sctx = slice.getContext("2d");
+        sctx.drawImage(canvas, p * pw, 0, pw, H, 0, 0, pw, H);
+        drawWatermark(sctx, pw, H);
+        blobs.push(await toBlob(slice));
+      }
+      await shareOrDownloadMany(blobs, "snappose-carousel");
+    }
+    if (!Paywall.isPremium()) toast("免費版匯出含浮水印，升級 Premium 可移除", 3500);
   },
 };
+
+/* 免費版浮水印 */
+function drawWatermark(ctx, W, H) {
+  if (Paywall.isPremium()) return;
+  ctx.font = `${Math.round(W * 0.028)}px sans-serif`;
+  ctx.fillStyle = "rgba(255,255,255,.55)";
+  ctx.strokeStyle = "rgba(0,0,0,.35)";
+  ctx.lineWidth = 3;
+  ctx.textAlign = "right";
+  const txt = "Made with SnapPose Studio";
+  ctx.strokeText(txt, W - 24, H - 24);
+  ctx.fillText(txt, W - 24, H - 24);
+}
 
 function roundRectPath(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -322,6 +381,13 @@ $("#ctl-bg").addEventListener("input", (e) => {
   $$("#bg-swatches .swatch").forEach((s) => s.classList.remove("active"));
   Collage.bg = e.target.value;
   Collage.render();
+});
+$$("#carousel-chips .chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    const n = +chip.dataset.pages;
+    if (n >= 3 && !Paywall.gate(`無縫輪播 ${n} 張`)) return;
+    Collage.setPages(n);
+  });
 });
 $("#ctl-gap").addEventListener("input", (e) => { Collage.gap = +e.target.value; Collage.render(); });
 $("#ctl-radius").addEventListener("input", (e) => { Collage.radius = +e.target.value; Collage.render(); });

@@ -148,6 +148,20 @@ main { flex: 1; min-height: 0; display: flex; }
 .sheet-label { font-size: 13px; color: var(--muted); min-width: 30px; flex-shrink: 0; }
 .sheet-row input[type=range] { flex: 1; accent-color: var(--accent); }
 .preset-hint { font-size: 11px; color: var(--muted); margin: -4px 0 10px 44px; }
+.preset-hint[hidden] { display: none; }
+.chip-lock { font-size: 10px; }
+
+/* 輪播分頁參考線與頁碼 */
+.page-guide {
+  position: absolute; top: 0; bottom: 0; width: 0; z-index: 3;
+  border-left: 2px dashed rgba(91,140,255,.85); pointer-events: none;
+}
+.page-num {
+  position: absolute; top: 6px; z-index: 3; pointer-events: none;
+  background: rgba(91,140,255,.9); color: #fff;
+  font-size: 11px; font-weight: 700; line-height: 1;
+  padding: 4px 7px; border-radius: 999px;
+}
 
 /* 版型清單：橫向滑動大縮圖 + 名稱 */
 .template-list { display: flex; gap: 10px; overflow-x: auto; padding: 6px 2px 8px; }
