@@ -51,7 +51,7 @@ if (location.protocol === "http:" && !["localhost", "127.0.0.1"].includes(locati
     <button class="edit-tool" data-sheet="sheet-templates"><span>🧩</span>版型</button>
     <button class="edit-tool" data-sheet="sheet-canvas"><span>📐</span>畫布</button>
     <button class="edit-tool" id="btn-batch"><span>🖼️</span>照片</button>
-    <button class="edit-tool" id="btn-export"><span>⬇️</span>匯出</button>
+    <button class="edit-tool" id="btn-export"><span>📤</span>分享/匯出</button>
   </nav>
 
   <!-- 面板：版型 -->
@@ -64,14 +64,16 @@ if (location.protocol === "http:" && !["localhost", "127.0.0.1"].includes(locati
   <div class="sheet" id="sheet-canvas" hidden>
     <div class="sheet-head"><h3>畫布設定</h3><button class="sheet-close" data-close-sheet>完成</button></div>
     <div class="sheet-row">
-      <span class="sheet-label">比例</span>
-      <div class="chip-row" id="aspect-chips">
-        <button class="chip active" data-aspect="1">1:1</button>
-        <button class="chip" data-aspect="1.25">4:5</button>
-        <button class="chip" data-aspect="1.7778">9:16</button>
-        <button class="chip" data-aspect="0.5625">16:9</button>
+      <span class="sheet-label">用途</span>
+      <div class="chip-row" id="preset-chips">
+        <button class="chip active" data-preset="fb-square">FB 貼文 1:1</button>
+        <button class="chip" data-preset="fb-portrait">FB 直式 4:5</button>
+        <button class="chip" data-preset="fb-story">限時動態 9:16</button>
+        <button class="chip" data-preset="fb-cover">FB 封面</button>
+        <button class="chip" data-preset="fb-link">連結分享圖</button>
       </div>
     </div>
+    <p class="preset-hint" id="preset-hint">匯出尺寸：1080 × 1080（Facebook 貼文建議）</p>
     <div class="sheet-row">
       <span class="sheet-label">背景</span>
       <div class="chip-row" id="bg-swatches">

@@ -3,6 +3,25 @@
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
+/* 手機優先：優先開啟系統分享面板（可直接傳到 Facebook App），不支援則下載 */
+async function shareOrDownload(blob, filename) {
+  const file = new File([blob], filename, { type: "image/png" });
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: "SnapPose Studio" });
+      toast("已開啟分享面板，選 Facebook 即可發佈");
+      return;
+    } catch (err) {
+      if (err.name === "AbortError") return; // 使用者自行取消
+      console.warn("share failed, fallback to download", err);
+    }
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
 function toast(msg, ms = 2600) {
   const el = $("#toast");
   el.textContent = msg;

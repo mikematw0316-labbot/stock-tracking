@@ -1,13 +1,30 @@
 /* 拼貼編輯器：版型、照片拖曳/捏合縮放、畫布設定面板、匯出 PNG */
 
+/* Facebook 用途預設：畫布比例 + 匯出像素皆採 FB 官方建議尺寸 */
+const FB_PRESETS = {
+  "fb-square":   { w: 1080, h: 1080, hint: "1080 × 1080（Facebook 貼文建議）" },
+  "fb-portrait": { w: 1080, h: 1350, hint: "1080 × 1350（FB 直式貼文，動態牆佔版最大）" },
+  "fb-story":    { w: 1080, h: 1920, hint: "1080 × 1920（FB 限時動態 / Reels）" },
+  "fb-cover":    { w: 851,  h: 315,  hint: "851 × 315（個人檔案 / 粉絲專頁封面）" },
+  "fb-link":     { w: 1200, h: 630,  hint: "1200 × 630（連結分享預覽圖 1.91:1）" },
+};
+
 const Collage = {
   template: TEMPLATES[0],
   cells: [], // 與 template.cells 對應：{ img, ox, oy, zoom }（ox/oy 為相對格子尺寸的偏移比例）
   selected: -1,
-  aspect: 1, // 高/寬
+  preset: FB_PRESETS["fb-square"],
+  aspect: 1, // 高/寬，由 preset 推得
   gap: 8,
   radius: 12,
   bg: "#ffffff",
+
+  setPreset(id) {
+    this.preset = FB_PRESETS[id];
+    this.aspect = this.preset.h / this.preset.w;
+    $("#preset-hint").textContent = "匯出尺寸：" + this.preset.hint;
+    this.render();
+  },
 
   setTemplate(t) {
     this.template = t;
@@ -164,11 +181,11 @@ const Collage = {
     img.src = URL.createObjectURL(file);
   },
 
-  /* 匯出 1080px PNG；免費版加浮水印 */
+  /* 以 FB 建議像素匯出 PNG；免費版加浮水印 */
   export() {
     if (!this.hasPhotos()) { toast("先放入至少一張照片再匯出"); return; }
 
-    const W = 1080, H = Math.round(W * this.aspect);
+    const W = this.preset.w, H = this.preset.h;
     const k = W / parseFloat($("#collage-stage").style.width); // 顯示 px → 匯出 px
     const canvas = document.createElement("canvas");
     canvas.width = W; canvas.height = H;
@@ -210,11 +227,8 @@ const Collage = {
     }
 
     canvas.toBlob((blob) => {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "snappose-collage.png";
-      a.click();
-      toast(Paywall.isPremium() ? "已匯出 ✅" : "已匯出（免費版含浮水印，升級可移除）");
+      shareOrDownload(blob, "snappose-fb.png");
+      if (!Paywall.isPremium()) toast("免費版匯出含浮水印，升級 Premium 可移除", 3500);
     }, "image/png");
   },
 };
@@ -235,6 +249,8 @@ function renderTemplateList() {
   list.innerHTML = "";
   for (const t of TEMPLATES) {
     const locked = t.premium && !Paywall.isPremium();
+    const item = document.createElement("div");
+    item.className = "template-item";
     const thumb = document.createElement("button");
     thumb.className =
       "template-thumb" +
@@ -261,7 +277,12 @@ function renderTemplateList() {
       Collage.setTemplate(t);
       renderTemplateList();
     });
-    list.appendChild(thumb);
+    item.appendChild(thumb);
+    const name = document.createElement("div");
+    name.className = "template-name";
+    name.textContent = t.name;
+    item.appendChild(name);
+    list.appendChild(item);
   }
 }
 
@@ -284,11 +305,10 @@ $$(".edit-tool[data-sheet]").forEach((btn) => {
 $$("[data-close-sheet]").forEach((b) => b.addEventListener("click", closeSheets));
 
 /* ── 畫布設定 ── */
-$$("#aspect-chips .chip").forEach((chip) => {
+$$("#preset-chips .chip").forEach((chip) => {
   chip.addEventListener("click", () => {
-    $$("#aspect-chips .chip").forEach((c) => c.classList.toggle("active", c === chip));
-    Collage.aspect = parseFloat(chip.dataset.aspect);
-    Collage.render();
+    $$("#preset-chips .chip").forEach((c) => c.classList.toggle("active", c === chip));
+    Collage.setPreset(chip.dataset.preset);
   });
 });
 $$("#bg-swatches .swatch[data-bg]").forEach((sw) => {

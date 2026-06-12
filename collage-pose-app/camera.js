@@ -124,12 +124,10 @@ const Camera = {
     }
     ctx.drawImage(video, 0, 0);
     canvas.toBlob((blob) => {
-      const url = URL.createObjectURL(blob);
-      $("#shot-thumb-img").src = url;
-      const a = $("#shot-thumb");
-      a.href = url;
-      a.hidden = false;
-      toast("📸 已拍攝！點左下角縮圖下載", 3000);
+      this.lastBlob = blob;
+      $("#shot-thumb-img").src = URL.createObjectURL(blob);
+      $("#shot-thumb").hidden = false;
+      toast("📸 已拍攝！點左下角縮圖分享到 FB 或儲存", 3000);
     }, "image/png");
   },
 };
@@ -175,6 +173,10 @@ function renderCamPoseList() {
   strip.scrollLeft = keepScroll;
 }
 
+$("#shot-thumb").addEventListener("click", (e) => {
+  e.preventDefault();
+  if (Camera.lastBlob) shareOrDownload(Camera.lastBlob, "snappose.png");
+});
 $("#btn-cam-start").addEventListener("click", () => Camera.start());
 $("#btn-cam-flip").addEventListener("click", () => Camera.flip());
 $("#btn-capture").addEventListener("click", () => Camera.capture());

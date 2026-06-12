@@ -58,6 +58,24 @@ const TEMPLATES = [
     ],
   },
   {
+    id: "fb-album-5", name: "FB 相簿五格", premium: false,
+    cells: [
+      { x: 0, y: 0, w: 0.5, h: 0.6 },
+      { x: 0.5, y: 0, w: 0.5, h: 0.6 },
+      { x: 0, y: 0.6, w: 1 / 3, h: 0.4 },
+      { x: 1 / 3, y: 0.6, w: 1 / 3, h: 0.4 },
+      { x: 2 / 3, y: 0.6, w: 1 / 3, h: 0.4 },
+    ],
+  },
+  {
+    id: "fb-cover-tri", name: "封面三聯", premium: true,
+    cells: [
+      { x: 0, y: 0, w: 0.42, h: 1 },
+      { x: 0.42, y: 0, w: 0.29, h: 1 },
+      { x: 0.71, y: 0, w: 0.29, h: 1 },
+    ],
+  },
+  {
     id: "top-three", name: "一頂三", premium: true,
     cells: [
       { x: 0, y: 0, w: 1, h: 0.62 },
