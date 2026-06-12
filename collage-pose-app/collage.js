@@ -303,6 +303,8 @@ function roundRectPath(ctx, x, y, w, h, r) {
 }
 
 /* ── 版型清單（含付費鎖） ── */
+const THUMB_PALETTE = ["#e9c4a8", "#cdd9c3", "#ddd0ea", "#f2dfba", "#c5d6e8", "#eccdd3"];
+
 function renderTemplateList() {
   const list = $("#template-list");
   list.innerHTML = "";
@@ -316,15 +318,16 @@ function renderTemplateList() {
       (t.id === Collage.template.id ? " active" : "") +
       (locked ? " locked" : "");
     thumb.title = t.name;
-    for (const c of t.cells) {
+    t.cells.forEach((c, ci) => {
       const cell = document.createElement("div");
       cell.className = "t-cell";
       cell.style.left = 7 + c.x * 86 + "%";
       cell.style.top = 7 + c.y * 86 + "%";
       cell.style.width = c.w * 86 - 3 + "%";
       cell.style.height = c.h * 86 - 3 + "%";
+      cell.style.background = THUMB_PALETTE[ci % THUMB_PALETTE.length];
       thumb.appendChild(cell);
-    }
+    });
     if (t.premium) {
       const lock = document.createElement("span");
       lock.className = "lock-badge";

@@ -164,7 +164,7 @@ let detailPose = null;
 function makePoseCard(pose, small = false) {
   const locked = pose.premium && !Paywall.isPremium();
   const card = document.createElement("div");
-  card.className = "pose-card" + (locked ? " locked" : "");
+  card.className = `pose-card cat-${pose.cat}` + (locked ? " locked" : "");
   const NS = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(NS, "svg");
   svg.setAttribute("viewBox", "0 0 100 100");
