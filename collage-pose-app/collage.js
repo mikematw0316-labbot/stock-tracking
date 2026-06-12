@@ -1,4 +1,4 @@
-/* 拼貼編輯器：版型選擇、照片放置/拖曳/縮放、匯出 PNG */
+/* 拼貼編輯器：版型、照片拖曳/捏合縮放、畫布設定面板、匯出 PNG */
 
 const Collage = {
   template: TEMPLATES[0],
@@ -21,23 +21,20 @@ const Collage = {
 
   select(i) {
     this.selected = i;
-    const tb = $("#cell-toolbar");
     const cell = this.cells[i];
-    if (i >= 0 && cell && cell.img) {
-      tb.hidden = false;
-      $("#cell-zoom").value = Math.round(cell.zoom * 100);
-    } else {
-      tb.hidden = true;
-    }
+    $("#cell-toolbar").hidden = !(i >= 0 && cell && cell.img);
     $$(".collage-cell").forEach((el, idx) => el.classList.toggle("selected", idx === i));
   },
 
-  /* 依容器大小計算舞台尺寸並重繪所有格子 */
+  hasPhotos() {
+    return this.cells.some((c) => c.img);
+  },
+
   render() {
     const stage = $("#collage-stage");
     const wrap = stage.parentElement;
-    const maxW = Math.max(wrap.clientWidth - 48, 200);
-    const maxH = Math.max(wrap.clientHeight - 120, 200);
+    const maxW = Math.max(wrap.clientWidth - 28, 180);
+    const maxH = Math.max(wrap.clientHeight - 28, 180);
     let W = maxW, H = W * this.aspect;
     if (H > maxH) { H = maxH; W = H / this.aspect; }
 
@@ -59,6 +56,7 @@ const Collage = {
       this.bindCell(el, i);
       stage.appendChild(el);
     });
+    $("#empty-cta").hidden = this.hasPhotos();
     this.select(this.selected);
   },
 
@@ -88,39 +86,67 @@ const Collage = {
     state.oy = Math.min(my, Math.max(-my, state.oy));
   },
 
+  /* 單指拖曳構圖、雙指捏合縮放、點擊選取/上傳 */
   bindCell(el, i) {
-    let dragging = false, moved = false, sx = 0, sy = 0, ox0 = 0, oy0 = 0;
+    const pointers = new Map();
+    let moved = false, sx = 0, sy = 0, ox0 = 0, oy0 = 0;
+    let pinchDist = 0, zoom0 = 1;
 
     el.addEventListener("pointerdown", (e) => {
-      dragging = true; moved = false;
-      sx = e.clientX; sy = e.clientY;
-      ox0 = this.cells[i].ox; oy0 = this.cells[i].oy;
+      pointers.set(e.pointerId, e);
       el.setPointerCapture(e.pointerId);
+      if (pointers.size === 1) {
+        moved = false;
+        sx = e.clientX; sy = e.clientY;
+        ox0 = this.cells[i].ox; oy0 = this.cells[i].oy;
+      } else if (pointers.size === 2) {
+        const [a, b] = [...pointers.values()];
+        pinchDist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+        zoom0 = this.cells[i].zoom;
+      }
     });
+
     el.addEventListener("pointermove", (e) => {
-      if (!dragging || !this.cells[i].img) return;
+      if (!pointers.has(e.pointerId) || !this.cells[i].img) return;
+      pointers.set(e.pointerId, e);
+      const cw = parseFloat(el.style.width), ch = parseFloat(el.style.height);
+
+      if (pointers.size === 2) {
+        const [a, b] = [...pointers.values()];
+        const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+        if (pinchDist > 0) {
+          this.cells[i].zoom = Math.min(3, Math.max(1, zoom0 * (d / pinchDist)));
+          moved = true;
+          this.paintCell(el, i);
+        }
+        return;
+      }
+
       const dx = e.clientX - sx, dy = e.clientY - sy;
       if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
       if (!moved) return;
-      const cw = parseFloat(el.style.width), ch = parseFloat(el.style.height);
       this.cells[i].ox = ox0 + dx / cw;
       this.cells[i].oy = oy0 + dy / ch;
       this.paintCell(el, i);
     });
-    el.addEventListener("pointerup", () => {
-      dragging = false;
+
+    const release = (e) => {
+      pointers.delete(e.pointerId);
+      if (pointers.size > 0) return;
       if (!moved) {
         this.select(i);
         if (!this.cells[i].img) this.pickFor(i);
       }
-    });
+    };
+    el.addEventListener("pointerup", release);
+    el.addEventListener("pointercancel", release);
+
     el.addEventListener("wheel", (e) => {
       if (!this.cells[i].img) return;
       e.preventDefault();
       const c = this.cells[i];
       c.zoom = Math.min(3, Math.max(1, c.zoom * (e.deltaY < 0 ? 1.06 : 0.94)));
       this.paintCell(el, i);
-      if (this.selected === i) $("#cell-zoom").value = Math.round(c.zoom * 100);
     }, { passive: false });
   },
 
@@ -134,15 +160,13 @@ const Collage = {
     img.onload = () => {
       this.cells[i] = { img, ox: 0, oy: 0, zoom: 1 };
       this.render();
-      this.select(i);
     };
     img.src = URL.createObjectURL(file);
   },
 
   /* 匯出 1080px PNG；免費版加浮水印 */
   export() {
-    const filled = this.cells.some((c) => c.img);
-    if (!filled) { toast("先放入至少一張照片再匯出"); return; }
+    if (!this.hasPhotos()) { toast("先放入至少一張照片再匯出"); return; }
 
     const W = 1080, H = Math.round(W * this.aspect);
     const k = W / parseFloat($("#collage-stage").style.width); // 顯示 px → 匯出 px
@@ -211,7 +235,7 @@ function renderTemplateList() {
   list.innerHTML = "";
   for (const t of TEMPLATES) {
     const locked = t.premium && !Paywall.isPremium();
-    const thumb = document.createElement("div");
+    const thumb = document.createElement("button");
     thumb.className =
       "template-thumb" +
       (t.id === Collage.template.id ? " active" : "") +
@@ -220,10 +244,10 @@ function renderTemplateList() {
     for (const c of t.cells) {
       const cell = document.createElement("div");
       cell.className = "t-cell";
-      cell.style.left = 5 + c.x * 90 + "%";
-      cell.style.top = 5 + c.y * 90 + "%";
-      cell.style.width = c.w * 90 - 3 + "%";
-      cell.style.height = c.h * 90 - 3 + "%";
+      cell.style.left = 7 + c.x * 86 + "%";
+      cell.style.top = 7 + c.y * 86 + "%";
+      cell.style.width = c.w * 86 - 3 + "%";
+      cell.style.height = c.h * 86 - 3 + "%";
       thumb.appendChild(cell);
     }
     if (t.premium) {
@@ -241,19 +265,60 @@ function renderTemplateList() {
   }
 }
 
-/* ── 控制項 ── */
-$("#ctl-aspect").addEventListener("change", (e) => { Collage.aspect = parseFloat(e.target.value); Collage.render(); });
+/* ── 底部工具列與彈出面板 ── */
+function closeSheets() {
+  $$(".sheet").forEach((s) => (s.hidden = true));
+  $$(".edit-tool[data-sheet]").forEach((b) => b.classList.remove("active"));
+}
+$$(".edit-tool[data-sheet]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const sheet = $("#" + btn.dataset.sheet);
+    const willOpen = sheet.hidden;
+    closeSheets();
+    if (willOpen) {
+      sheet.hidden = false;
+      btn.classList.add("active");
+    }
+  });
+});
+$$("[data-close-sheet]").forEach((b) => b.addEventListener("click", closeSheets));
+
+/* ── 畫布設定 ── */
+$$("#aspect-chips .chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    $$("#aspect-chips .chip").forEach((c) => c.classList.toggle("active", c === chip));
+    Collage.aspect = parseFloat(chip.dataset.aspect);
+    Collage.render();
+  });
+});
+$$("#bg-swatches .swatch[data-bg]").forEach((sw) => {
+  sw.addEventListener("click", () => {
+    $$("#bg-swatches .swatch").forEach((s) => s.classList.toggle("active", s === sw));
+    Collage.bg = sw.dataset.bg;
+    Collage.render();
+  });
+});
+$("#ctl-bg").addEventListener("input", (e) => {
+  $$("#bg-swatches .swatch").forEach((s) => s.classList.remove("active"));
+  Collage.bg = e.target.value;
+  Collage.render();
+});
 $("#ctl-gap").addEventListener("input", (e) => { Collage.gap = +e.target.value; Collage.render(); });
 $("#ctl-radius").addEventListener("input", (e) => { Collage.radius = +e.target.value; Collage.render(); });
-$("#ctl-bg").addEventListener("input", (e) => { Collage.bg = e.target.value; Collage.render(); });
 
+/* ── 照片選取 ── */
 $("#cell-input").addEventListener("change", (e) => {
   const file = e.target.files[0];
   if (file && Collage._pickTarget != null) Collage.loadFileInto(Collage._pickTarget, file);
   e.target.value = "";
 });
 
-$("#btn-batch").addEventListener("click", () => $("#batch-input").click());
+function openBatchPicker() {
+  closeSheets();
+  $("#batch-input").click();
+}
+$("#btn-batch").addEventListener("click", openBatchPicker);
+$("#empty-cta button").addEventListener("click", openBatchPicker);
 $("#batch-input").addEventListener("change", (e) => {
   const files = [...e.target.files];
   let fi = 0;
@@ -264,12 +329,6 @@ $("#batch-input").addEventListener("change", (e) => {
   e.target.value = "";
 });
 
-$("#cell-zoom").addEventListener("input", (e) => {
-  const c = Collage.cells[Collage.selected];
-  if (!c) return;
-  c.zoom = +e.target.value / 100;
-  Collage.render();
-});
 $("#cell-replace").addEventListener("click", () => Collage.pickFor(Collage.selected));
 $("#cell-remove").addEventListener("click", () => {
   const c = Collage.cells[Collage.selected];
@@ -277,7 +336,7 @@ $("#cell-remove").addEventListener("click", () => {
   Collage.render();
   Collage.select(-1);
 });
-$("#btn-export").addEventListener("click", () => Collage.export());
+$("#btn-export").addEventListener("click", () => { closeSheets(); Collage.export(); });
 
 window.addEventListener("resize", () => Collage.render());
 window.addEventListener("DOMContentLoaded", () => Collage.setTemplate(TEMPLATES[0]));

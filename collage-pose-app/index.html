@@ -15,21 +15,15 @@ if (location.protocol === "http:" && !["localhost", "127.0.0.1"].includes(locati
 </head>
 <body>
 
-<!-- ───────── 頂部導覽 ───────── -->
+<!-- ───────── 頂部列 ───────── -->
 <header class="topbar">
   <div class="brand">
     <span class="brand-logo">📸</span>
     <span class="brand-name">SnapPose <em>Studio</em></span>
   </div>
-  <nav class="tabs" role="tablist">
-    <button class="tab active" data-tab="collage" role="tab">🧩 照片拼貼</button>
-    <button class="tab" data-tab="pose" role="tab">🕺 Pose 圖庫</button>
-    <button class="tab" data-tab="camera" role="tab">🎥 Pose 相機</button>
-    <button class="tab" data-tab="tips" role="tab">💡 拍照技巧</button>
-  </nav>
   <div class="topbar-right">
     <span id="sub-badge" class="sub-badge free">免費版</span>
-    <button id="btn-upgrade" class="btn btn-gold">⭐ 升級 Premium</button>
+    <button id="btn-upgrade" class="btn btn-gold btn-sm">⭐ Premium</button>
   </div>
 </header>
 
@@ -37,80 +31,117 @@ if (location.protocol === "http:" && !["localhost", "127.0.0.1"].includes(locati
 
 <!-- ───────── 分頁：照片拼貼 ───────── -->
 <section id="panel-collage" class="panel active">
-  <aside class="sidebar">
-    <h2>版型</h2>
-    <p class="hint">點選版型後，點空格上傳照片；拖曳可調整位置、滾輪縮放。</p>
-    <div id="template-list" class="template-list"></div>
-
-    <h2>畫布設定</h2>
-    <div class="control-group">
-      <label>比例
-        <select id="ctl-aspect">
-          <option value="1">1 : 1（正方形）</option>
-          <option value="0.8">4 : 5（IG 直式）</option>
-          <option value="0.5625">9 : 16（限時動態）</option>
-          <option value="1.7778">16 : 9（橫式）</option>
-        </select>
-      </label>
-      <label>間距 <input type="range" id="ctl-gap" min="0" max="40" value="8"></label>
-      <label>圓角 <input type="range" id="ctl-radius" min="0" max="60" value="12"></label>
-      <label>背景色 <input type="color" id="ctl-bg" value="#ffffff"></label>
-    </div>
-
-    <h2>批次上傳</h2>
-    <button id="btn-batch" class="btn btn-block">📂 一次選多張照片</button>
-    <input type="file" id="batch-input" accept="image/*" multiple hidden>
-
-    <button id="btn-export" class="btn btn-primary btn-block">⬇️ 匯出 PNG（1080px）</button>
-  </aside>
-
   <div class="stage-wrap">
     <div id="collage-stage" class="collage-stage"></div>
-    <div id="cell-toolbar" class="cell-toolbar" hidden>
-      <label>縮放 <input type="range" id="cell-zoom" min="100" max="300" value="100"></label>
-      <button id="cell-replace" class="btn btn-sm">替換</button>
-      <button id="cell-remove" class="btn btn-sm btn-danger">移除</button>
+    <div id="empty-cta" class="empty-cta">
+      <button class="btn btn-primary">🖼️ 選擇照片開始</button>
+      <p>或先從下方「版型」挑一個喜歡的排版</p>
     </div>
   </div>
+
+  <!-- 選取格子時浮出的小工具列 -->
+  <div id="cell-toolbar" class="cell-toolbar" hidden>
+    <span class="cell-hint">拖曳移動・雙指縮放</span>
+    <button id="cell-replace" class="btn btn-sm">替換</button>
+    <button id="cell-remove" class="btn btn-sm btn-danger">移除</button>
+  </div>
+
+  <!-- 底部工具列（編輯器主導覽） -->
+  <nav class="edit-toolbar">
+    <button class="edit-tool" data-sheet="sheet-templates"><span>🧩</span>版型</button>
+    <button class="edit-tool" data-sheet="sheet-canvas"><span>📐</span>畫布</button>
+    <button class="edit-tool" id="btn-batch"><span>🖼️</span>照片</button>
+    <button class="edit-tool" id="btn-export"><span>⬇️</span>匯出</button>
+  </nav>
+
+  <!-- 面板：版型 -->
+  <div class="sheet" id="sheet-templates" hidden>
+    <div class="sheet-head"><h3>選擇版型</h3><button class="sheet-close" data-close-sheet>完成</button></div>
+    <div id="template-list" class="template-list"></div>
+  </div>
+
+  <!-- 面板：畫布設定 -->
+  <div class="sheet" id="sheet-canvas" hidden>
+    <div class="sheet-head"><h3>畫布設定</h3><button class="sheet-close" data-close-sheet>完成</button></div>
+    <div class="sheet-row">
+      <span class="sheet-label">比例</span>
+      <div class="chip-row" id="aspect-chips">
+        <button class="chip active" data-aspect="1">1:1</button>
+        <button class="chip" data-aspect="1.25">4:5</button>
+        <button class="chip" data-aspect="1.7778">9:16</button>
+        <button class="chip" data-aspect="0.5625">16:9</button>
+      </div>
+    </div>
+    <div class="sheet-row">
+      <span class="sheet-label">背景</span>
+      <div class="chip-row" id="bg-swatches">
+        <button class="swatch" data-bg="#ffffff" style="background:#ffffff"></button>
+        <button class="swatch" data-bg="#000000" style="background:#000000"></button>
+        <button class="swatch" data-bg="#f5e9da" style="background:#f5e9da"></button>
+        <button class="swatch" data-bg="#dce8e0" style="background:#dce8e0"></button>
+        <button class="swatch" data-bg="#e8dcec" style="background:#e8dcec"></button>
+        <label class="swatch swatch-custom">🎨<input type="color" id="ctl-bg" value="#ffffff"></label>
+      </div>
+    </div>
+    <div class="sheet-row"><span class="sheet-label">間距</span><input type="range" id="ctl-gap" min="0" max="40" value="8"></div>
+    <div class="sheet-row"><span class="sheet-label">圓角</span><input type="range" id="ctl-radius" min="0" max="60" value="12"></div>
+  </div>
+
   <input type="file" id="cell-input" accept="image/*" hidden>
+  <input type="file" id="batch-input" accept="image/*" multiple hidden>
 </section>
 
 <!-- ───────── 分頁：Pose 圖庫 ───────── -->
 <section id="panel-pose" class="panel">
   <div class="pose-header">
-    <h2>拍照姿勢圖庫</h2>
+    <h2>姿勢圖庫</h2>
     <div id="pose-cats" class="chip-row"></div>
   </div>
   <div id="pose-grid" class="pose-grid"></div>
 </section>
 
-<!-- ───────── 分頁：Pose 相機 ───────── -->
+<!-- ───────── 分頁：Pose 相機（全螢幕取景器） ───────── -->
 <section id="panel-camera" class="panel">
-  <div class="camera-layout">
-    <div class="camera-stage">
-      <video id="cam-video" autoplay playsinline muted></video>
-      <svg id="cam-overlay" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
-      <div id="cam-placeholder" class="cam-placeholder">
-        <p>📷 點「開啟相機」開始，<br>並從右側選擇一個 Pose 疊加取景。</p>
-      </div>
-      <div id="cam-countdown" class="cam-countdown" hidden></div>
+  <div class="camera-stage">
+    <video id="cam-video" autoplay playsinline muted></video>
+    <svg id="cam-overlay" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
+    <img id="cam-guide-photo" alt="" hidden>
+
+    <!-- 取景器頂部圖示列 -->
+    <div class="cam-top" hidden>
+      <button class="cam-icon" id="btn-cam-flip" title="切換鏡頭">🔄</button>
+      <button class="cam-icon" id="btn-cam-mirror" title="鏡像">↔️</button>
+      <button class="cam-icon" id="btn-cam-timer" title="3 秒倒數">⏱</button>
+      <button class="cam-icon" id="btn-cam-opacity" title="參考線透明度">👻</button>
+      <button class="cam-icon" id="btn-cam-guide" title="用自己的照片當參考線">🖼️</button>
     </div>
-    <aside class="camera-side">
-      <button id="btn-cam-start" class="btn btn-primary btn-block">開啟相機</button>
-      <button id="btn-cam-flip" class="btn btn-block" disabled>🔄 切換前後鏡頭</button>
-      <label class="ctl">輪廓透明度 <input type="range" id="cam-opacity" min="10" max="100" value="55"></label>
-      <label class="ctl"><input type="checkbox" id="cam-mirror" checked> 鏡像畫面</label>
-      <label class="ctl"><input type="checkbox" id="cam-timer"> 3 秒倒數</label>
-      <button id="btn-capture" class="btn btn-gold btn-block" disabled>📸 拍照</button>
-      <div id="cam-pose-name" class="cam-pose-name">尚未選擇 Pose</div>
-      <h3>快速選 Pose</h3>
-      <div id="cam-pose-list" class="cam-pose-list"></div>
-      <div id="shot-preview" class="shot-preview" hidden>
-        <img id="shot-img" alt="拍攝結果">
-        <a id="shot-download" class="btn btn-sm btn-primary" download="snappose.png">下載照片</a>
+    <div class="cam-opacity-bar" id="cam-opacity-bar" hidden>
+      <input type="range" id="cam-opacity" min="10" max="100" value="55">
+    </div>
+
+    <!-- 取景器底部：Pose 滑動條 + 快門 -->
+    <div class="cam-bottom" hidden>
+      <div id="cam-pose-strip" class="cam-pose-strip"></div>
+      <div class="cam-shutter-row">
+        <a id="shot-thumb" class="shot-thumb" download="snappose.png" hidden><img id="shot-thumb-img" alt="上一張"></a>
+        <button id="btn-capture" class="shutter" title="拍照"></button>
+        <div class="shot-thumb-spacer"></div>
       </div>
-    </aside>
+    </div>
+
+    <div id="cam-countdown" class="cam-countdown" hidden></div>
+
+    <!-- 未開啟相機時的起始畫面 -->
+    <div id="cam-placeholder" class="cam-placeholder">
+      <div class="cam-placeholder-inner">
+        <div class="cam-placeholder-icon">🎥</div>
+        <h3>Pose 取景相機</h3>
+        <p>半透明姿勢參考線會疊在畫面上，<br>對齊參考線就能拍出好看的構圖。</p>
+        <button id="btn-cam-start" class="btn btn-primary">開啟相機</button>
+      </div>
+    </div>
   </div>
+  <input type="file" id="guide-input" accept="image/*" hidden>
 </section>
 
 <!-- ───────── 分頁：拍照技巧 ───────── -->
@@ -121,6 +152,14 @@ if (location.protocol === "http:" && !["localhost", "127.0.0.1"].includes(locati
 
 </main>
 
+<!-- ───────── 底部分頁導覽 ───────── -->
+<nav class="tabs" role="tablist">
+  <button class="tab active" data-tab="collage" role="tab"><span>🧩</span>拼貼</button>
+  <button class="tab" data-tab="pose" role="tab"><span>🕺</span>姿勢</button>
+  <button class="tab" data-tab="camera" role="tab"><span>📷</span>相機</button>
+  <button class="tab" data-tab="tips" role="tab"><span>💡</span>技巧</button>
+</nav>
+
 <!-- ───────── Pose 詳情彈窗 ───────── -->
 <div id="pose-modal" class="modal" hidden>
   <div class="modal-box pose-detail">
@@ -130,7 +169,7 @@ if (location.protocol === "http:" && !["localhost", "127.0.0.1"].includes(locati
       <h3 id="pose-detail-name"></h3>
       <p id="pose-detail-cat" class="muted"></p>
       <ul id="pose-detail-tips"></ul>
-      <button id="pose-detail-cam" class="btn btn-primary btn-block">🎥 用這個 Pose 開相機</button>
+      <button id="pose-detail-cam" class="btn btn-primary btn-block">📷 用這個 Pose 開相機</button>
     </div>
   </div>
 </div>
