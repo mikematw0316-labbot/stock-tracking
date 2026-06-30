@@ -6,7 +6,7 @@
     "perUnit": 1,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-06-30T14:18:51.954Z"
+    "updatedAt": "2026-06-30T15:22:53.605Z"
   },
   "0056": {
     "price": 53.25,
@@ -15,7 +15,7 @@
     "perUnit": 1,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-06-30T14:18:51.954Z"
+    "updatedAt": "2026-06-30T15:22:53.605Z"
   },
   "00878": {
     "price": 33.5,
@@ -24,7 +24,7 @@
     "perUnit": 0.66,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-06-30T14:18:51.954Z"
+    "updatedAt": "2026-06-30T15:22:53.605Z"
   },
   "00919": {
     "price": 29.5,
@@ -33,7 +33,7 @@
     "perUnit": 1,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-06-30T14:18:51.954Z"
+    "updatedAt": "2026-06-30T15:22:53.605Z"
   },
   "00953B": {
     "price": 9.7,
@@ -42,7 +42,7 @@
     "perUnit": 0.061,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-06-30T14:18:51.954Z"
+    "updatedAt": "2026-06-30T15:22:53.605Z"
   },
   "00984D": {
     "price": 10.19,
@@ -51,7 +51,7 @@
     "perUnit": 0.085,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-06-30T14:18:51.954Z"
+    "updatedAt": "2026-06-30T15:22:53.605Z"
   },
   "00937B": {
     "price": 15.18,
@@ -60,7 +60,7 @@
     "perUnit": 0.072,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-06-30T14:18:51.954Z"
+    "updatedAt": "2026-06-30T15:22:53.605Z"
   },
   "00933B": {
     "price": 16.33,
@@ -69,7 +69,7 @@
     "perUnit": 0.072,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-06-30T14:18:51.954Z"
+    "updatedAt": "2026-06-30T15:22:53.605Z"
   },
   "00687B": {
     "price": 28.55,
@@ -78,26 +78,26 @@
     "perUnit": 0.262,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-06-30T14:18:51.954Z"
+    "updatedAt": "2026-06-30T15:22:53.605Z"
   },
   "QQQI": {
-    "price": 56.559,
+    "price": 56.609,
     "exDate": "2026/07/22",
     "payDate": "2026/06/18",
     "perUnit": 0.6572,
     "isEstimated": false,
     "currency": "USD",
     "fxRate": 31.849,
-    "updatedAt": "2026-06-30T14:18:51.954Z"
+    "updatedAt": "2026-06-30T15:22:53.605Z"
   },
   "CLOZ": {
-    "price": 26.41,
+    "price": 26.416,
     "exDate": "2026/06/02",
     "payDate": "2026/06/08",
     "perUnit": 0.14931,
     "isEstimated": false,
     "currency": "USD",
     "fxRate": 31.849,
-    "updatedAt": "2026-06-30T14:18:51.954Z"
+    "updatedAt": "2026-06-30T15:22:53.605Z"
   }
 }
