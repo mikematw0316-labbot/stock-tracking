@@ -6,7 +6,7 @@
     "perUnit": 0.6,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-10-19T08:24:15.077Z"
+    "updatedAt": "2026-10-19T11:52:49.609Z"
   },
   "0056": {
     "price": 58,
@@ -15,7 +15,7 @@
     "perUnit": 1.35,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-10-19T08:24:15.077Z"
+    "updatedAt": "2026-10-19T11:52:49.609Z"
   },
   "00878": {
     "price": 35.15,
@@ -24,7 +24,7 @@
     "perUnit": 1.01,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-10-19T08:24:15.077Z"
+    "updatedAt": "2026-10-19T11:52:49.609Z"
   },
   "00919": {
     "price": 32.45,
@@ -33,7 +33,7 @@
     "perUnit": 1.1,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-10-19T08:24:15.077Z"
+    "updatedAt": "2026-10-19T11:52:49.609Z"
   },
   "00953B": {
     "price": 9.59,
@@ -42,7 +42,7 @@
     "perUnit": 0.067,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-10-19T08:24:15.077Z"
+    "updatedAt": "2026-10-19T11:52:49.609Z"
   },
   "00984D": {
     "price": 9.7,
@@ -51,7 +51,7 @@
     "perUnit": 0.085,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-10-19T08:24:15.077Z"
+    "updatedAt": "2026-10-19T11:52:49.609Z"
   },
   "00937B": {
     "price": 14.1,
@@ -60,7 +60,7 @@
     "perUnit": 0.072,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-10-19T08:24:15.077Z"
+    "updatedAt": "2026-10-19T11:52:49.609Z"
   },
   "00933B": {
     "price": 15.43,
@@ -69,7 +69,7 @@
     "perUnit": 0.073,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-10-19T08:24:15.077Z"
+    "updatedAt": "2026-10-19T11:52:49.609Z"
   },
   "00687B": {
     "price": 26.86,
@@ -78,7 +78,7 @@
     "perUnit": 0.335,
     "isEstimated": false,
     "currency": "TWD",
-    "updatedAt": "2026-10-19T08:24:15.077Z"
+    "updatedAt": "2026-10-19T11:52:49.609Z"
   },
   "QQQI": {
     "price": 53.62,
@@ -87,8 +87,8 @@
     "perUnit": 0.634,
     "isEstimated": false,
     "currency": "USD",
-    "fxRate": 32.484,
-    "updatedAt": "2026-10-19T08:24:15.077Z"
+    "fxRate": 32.446,
+    "updatedAt": "2026-10-19T11:52:49.609Z"
   },
   "CLOZ": {
     "price": 26.2,
@@ -97,7 +97,7 @@
     "perUnit": 0.15169,
     "isEstimated": false,
     "currency": "USD",
-    "fxRate": 32.484,
-    "updatedAt": "2026-10-19T08:24:15.077Z"
+    "fxRate": 32.446,
+    "updatedAt": "2026-10-19T11:52:49.609Z"
   }
 }
